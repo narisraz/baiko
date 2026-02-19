@@ -130,6 +130,31 @@ function buildHover(document, position) {
   if (!range) return null;
 
   const word = document.getText(range);
+
+  // Accès natif : obj.member → afficher la signature TypeScript
+  if (!KEYWORD_DOCS[word]) {
+    const ctx = getMemberContext(document, position);
+    if (ctx) {
+      const { objName, memberName, pkgName } = ctx;
+      const workspaceDir = path.dirname(document.uri.fsPath);
+      const dtsPath = resolveDtsPath(workspaceDir, pkgName);
+      if (dtsPath && memberName) {
+        const found = findMemberInDts(dtsPath, memberName);
+        if (found) {
+          const md = new vscode.MarkdownString();
+          md.appendCodeblock(found.signature, "typescript");
+          md.appendMarkdown(`_\`${pkgName}\`_`);
+          return new vscode.Hover(md, range);
+        }
+      }
+      const label = memberName ? `${objName}.${memberName}` : objName;
+      return new vscode.Hover(
+        new vscode.MarkdownString(`**\`${label}\`** — paokaty \`${pkgName}\``),
+        range
+      );
+    }
+  }
+
   const { functions, variables } = scanDocument(document);
 
   if (KEYWORD_DOCS[word]) {
@@ -233,6 +258,120 @@ function getImportedPaths(document) {
   return paths;
 }
 
+// ---- Accès natif : helpers ----
+
+function deriveVarName(pkgName) {
+  const base = pkgName.includes("/") ? pkgName.split("/").pop() : pkgName;
+  return base.replace(/[^a-zA-Z0-9_]/g, "_");
+}
+
+/** Retourne le nom de package npm associé à un identifiant Baiko, ou null. */
+function getPackageForIdent(document, identName) {
+  const text = document.getText();
+  const re = /^\s*ampidiro\s+"package:([^"]+)"/gm;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (deriveVarName(m[1]) === identName) return m[1];
+  }
+  return null;
+}
+
+/** Résout le chemin vers le fichier .d.ts principal d'un paquet npm. */
+function resolveDtsPath(searchDir, pkgName) {
+  const dirs = [];
+  let dir = searchDir;
+  for (let i = 0; i < 8; i++) {
+    dirs.push(dir);
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  function tryTypes(name) {
+    try {
+      const pkgJsonPath = require.resolve(name + "/package.json", { paths: dirs });
+      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+      const pkgDir = path.dirname(pkgJsonPath);
+      const typesField = pkgJson.types || pkgJson.typings;
+      if (typesField) {
+        const resolved = path.resolve(pkgDir, typesField);
+        if (fs.existsSync(resolved)) return resolved;
+      }
+      const indexDts = path.join(pkgDir, "index.d.ts");
+      if (fs.existsSync(indexDts)) return indexDts;
+    } catch (_) {}
+    return null;
+  }
+
+  const atTypesName = pkgName.startsWith("@")
+    ? pkgName.slice(1).replace("/", "__")
+    : pkgName;
+  return tryTypes(pkgName) || tryTypes("@types/" + atTypesName) || null;
+}
+
+/** Cherche un membre dans un fichier .d.ts ; retourne { line, col, signature } ou null. */
+function findMemberInDts(dtsPath, memberName) {
+  try {
+    const content = fs.readFileSync(dtsPath, "utf-8");
+    const lines = content.split("\n");
+    const esc = memberName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Callable declaration: name( or name<T (generic function)
+    const fnRe   = new RegExp(`\\b${esc}\\s*[(<]`);
+    // Property declaration fallback: name:
+    const propRe = new RegExp(`\\b${esc}\\s*:`);
+    const nameRe = new RegExp(`\\b${esc}\\b`);
+
+    let propMatch = null;
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trimStart();
+      // Skip comment lines
+      if (trimmed.startsWith("*") || trimmed.startsWith("//") || trimmed.startsWith("/*")) continue;
+      if (fnRe.test(lines[i])) {
+        const col = lines[i].search(nameRe);
+        return { line: i, col: Math.max(0, col), signature: lines[i].trim() };
+      }
+      if (propMatch === null && propRe.test(lines[i])) {
+        const col = lines[i].search(nameRe);
+        propMatch = { line: i, col: Math.max(0, col), signature: lines[i].trim() };
+      }
+    }
+    return propMatch;
+  } catch (_) {}
+  return null;
+}
+
+/**
+ * Si le curseur est sur un accès natif (obj.member ou obj.),
+ * retourne { objName, memberName, pkgName } ou null.
+ */
+function getMemberContext(document, position) {
+  const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z_]\w*/);
+  if (!wordRange) return null;
+  const word = document.getText(wordRange);
+  const lineText = document.lineAt(position.line).text;
+
+  // Cursor sur le membre : `mathjs.sqrt`
+  const beforeWord = lineText.slice(0, wordRange.start.character);
+  const objMatch = beforeWord.match(/([a-zA-Z_]\w*)\.$/);
+  if (objMatch) {
+    const pkgName = getPackageForIdent(document, objMatch[1]);
+    if (pkgName) return { objName: objMatch[1], memberName: word, pkgName };
+  }
+
+  // Cursor sur l'objet : `mathjs`.sqrt
+  const afterWord = lineText[wordRange.end.character];
+  if (afterWord === ".") {
+    const pkgName = getPackageForIdent(document, word);
+    if (pkgName) {
+      const afterDot = lineText.slice(wordRange.end.character + 1);
+      const memberMatch = afterDot.match(/^([a-zA-Z_]\w*)/);
+      return { objName: word, memberName: memberMatch ? memberMatch[1] : null, pkgName };
+    }
+  }
+
+  return null;
+}
+
 function buildDefinition(document, position) {
   // ---- Import : clic sur le chemin "fichier.baiko" ----
   const importRange = document.getWordRangeAtPosition(position, /"[^"]*"/);
@@ -255,6 +394,24 @@ function buildDefinition(document, position) {
 
   const word = document.getText(range);
   if (KEYWORD_DOCS[word]) return null; // mots-clés : pas de définition
+
+  // ---- Accès natif : obj.member → naviguer vers le .d.ts ----
+  const ctx = getMemberContext(document, position);
+  if (ctx) {
+    const { memberName, pkgName } = ctx;
+    const workspaceDir = path.dirname(document.uri.fsPath);
+    const dtsPath = resolveDtsPath(workspaceDir, pkgName);
+    if (dtsPath) {
+      if (memberName) {
+        const found = findMemberInDts(dtsPath, memberName);
+        const line = found ? found.line : 0;
+        const col  = found ? found.col  : 0;
+        return new vscode.Location(vscode.Uri.file(dtsPath), new vscode.Position(line, col));
+      }
+      return new vscode.Location(vscode.Uri.file(dtsPath), new vscode.Position(0, 0));
+    }
+    return null;
+  }
 
   // Cherche d'abord dans le fichier courant
   const loc = findDefinitionInFileText(document.uri.fsPath, document.getText(), word);
