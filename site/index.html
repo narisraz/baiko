@@ -151,12 +151,40 @@
       "marina", "diso", "tsisy", "Isa", "Soratra", "Marina", "Mety", "Lisitra",
     ];
 
+    const LIST_MEMBERS = [
+      { text: "ovay()",     displayText: "ovay(asa)            — map" },
+      { text: "tsingano()", displayText: "tsingano(asa)        — filter" },
+      { text: "atambaro()", displayText: "atambaro(init, asa)  — reduce" },
+      { text: "ampidiro()", displayText: "ampidiro(singa)      — push" },
+      { text: "isany",      displayText: "isany                — length" },
+    ];
+
     function baikoHint(cm) {
       const cursor = cm.getCursor();
       const line = cm.getLine(cursor.line);
       let wordStart = cursor.ch;
       while (wordStart > 0 && /\w/.test(line[wordStart - 1])) wordStart--;
       const word = line.slice(wordStart, cursor.ch);
+
+      // Autocomplétion après un point : suggère les méthodes si l'objet est Lisitra
+      const beforeWord = line.slice(0, wordStart);
+      const dotMatch = beforeWord.match(/([a-zA-Z_]\w*)\.$/);
+      if (dotMatch) {
+        const objName = dotMatch[1];
+        const lisitraRe = new RegExp("\\b" + objName + "\\s*:\\s*Lisitra\\s*\\(");
+        if (lisitraRe.test(cm.getValue())) {
+          const filtered = LIST_MEMBERS.filter(function(entry) {
+            return !word || entry.text.startsWith(word);
+          });
+          if (filtered.length === 0) return;
+          return {
+            list: filtered,
+            from: CodeMirror.Pos(cursor.line, wordStart),
+            to:   CodeMirror.Pos(cursor.line, cursor.ch),
+          };
+        }
+      }
+
       if (!word) return;
 
       const text = cm.getValue();
@@ -210,7 +238,8 @@
     });
 
     cm.on("inputRead", function(editor, change) {
-      if (!change.text[0] || !/[a-zA-Z_]/.test(change.text[0])) return;
+      if (!change.text[0]) return;
+      if (!/[a-zA-Z_.]/.test(change.text[0])) return;
       editor.showHint({ hint: baikoHint, completeSingle: false });
     });
 
