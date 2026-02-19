@@ -1,0 +1,35 @@
+# Baiko - fiteny fanaovana programa amin'ny teny malagasy
+
+# Fanambarana sy fampisehoana
+isa = 42;
+anarana = "Rakoto";
+asehoy isa;
+asehoy anarana;
+
+# Fampitahana (if/else)
+raha isa > 10 na isa < 50 dia
+  asehoy "lehibe";
+ankoatra dia
+  asehoy "kely";
+farany
+
+# Fitodiavana (while loop)
+kaonty = 1;
+avereno raha kaonty <= 5 dia
+  asehoy kaonty;
+  kaonty = kaonty + 1;
+farany
+
+# Asa (function)
+asa ampio(a: Isa, b: Isa): Isa dia
+  mamoaka a + b;
+farany
+
+asa tohaina(s: Soratra): Soratra dia
+  mamoaka s + " - vita!";
+farany
+
+# Fampiasana ny asa
+vokatra = ampio(10, 32);
+asehoy vokatra;
+asehoy tohaina("Salama");
