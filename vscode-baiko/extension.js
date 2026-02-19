@@ -232,16 +232,36 @@ function buildCompletions(document, position) {
     items.push(item);
   }
 
-  // Paquets importés via ampidiro "package:xxx" → variable utilisable dans le code
+  // Paquets installés : déjà importés (haute priorité) + auto-import pour les autres
+  const docText = document.getText();
+  const alreadyImported = new Set();
   const importRe = /^\s*ampidiro\s+"package:([^"]+)"/gm;
-  const text = document.getText();
   let importMatch;
-  while ((importMatch = importRe.exec(text)) !== null) {
-    const pkgName = importMatch[1];
-    const varName = deriveVarName(pkgName);
+  while ((importMatch = importRe.exec(docText)) !== null) {
+    alreadyImported.add(deriveVarName(importMatch[1]));
+  }
+
+  // Position d'insertion : après le dernier ampidiro existant, sinon ligne 0
+  let insertLine = 0;
+  for (let i = 0; i < document.lineCount; i++) {
+    if (document.lineAt(i).text.trimStart().startsWith("ampidiro")) insertLine = i + 1;
+  }
+  const insertPos = new vscode.Position(insertLine, 0);
+
+  for (const pkg of getInstalledPackages(path.dirname(document.uri.fsPath))) {
+    const varName = deriveVarName(pkg);
+    const imported = alreadyImported.has(varName);
     const item = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Module);
-    item.detail = `package:${pkgName}`;
-    item.documentation = new vscode.MarkdownString(`Paokaty \`${pkgName}\` nampidirina`);
+    item.detail = imported ? `package:${pkg}` : `package:${pkg}  ✦ auto-import`;
+    item.documentation = new vscode.MarkdownString(
+      imported ? `Paokaty \`${pkg}\` nampidirina` : `Hampidiraina \`ampidiro "package:${pkg}";\``
+    );
+    if (!imported) {
+      item.sortText = `z_${varName}`; // après les symboles locaux
+      item.additionalTextEdits = [
+        vscode.TextEdit.insert(insertPos, `ampidiro "package:${pkg}";\n`),
+      ];
+    }
     items.push(item);
   }
 
