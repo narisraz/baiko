@@ -1,0 +1,216 @@
+import { Lexer } from "../src/lexer/lexer";
+import { Parser } from "../src/parser/parser";
+import {
+  Program,
+  FunctionDeclaration,
+  IfStatement,
+  WhileStatement,
+  ReturnStatement,
+  PrintStatement,
+  ExpressionStatement,
+  AssignmentExpression,
+  BinaryExpression,
+  UnaryExpression,
+  CallExpression,
+  NumericLiteral,
+  StringLiteral,
+  BooleanLiteral,
+  Identifier,
+} from "../src/types/ast";
+
+function parse(src: string): Program {
+  const tokens = new Lexer(src).tokenize();
+  return new Parser(tokens).parse();
+}
+
+function first(src: string) {
+  return parse(src).body[0];
+}
+
+function expr(src: string) {
+  return (first(src) as ExpressionStatement).expression;
+}
+
+describe("Parser — littéraux", () => {
+  test("nombre", () => {
+    const node = expr("42;") as NumericLiteral;
+    expect(node.type).toBe("NumericLiteral");
+    expect(node.value).toBe(42);
+  });
+
+  test("chaîne", () => {
+    const node = expr('"Salama";') as StringLiteral;
+    expect(node.type).toBe("StringLiteral");
+    expect(node.value).toBe("Salama");
+  });
+
+  test("marina → BooleanLiteral true", () => {
+    const node = expr("marina;") as BooleanLiteral;
+    expect(node.type).toBe("BooleanLiteral");
+    expect(node.value).toBe(true);
+  });
+
+  test("diso → BooleanLiteral false", () => {
+    const node = expr("diso;") as BooleanLiteral;
+    expect(node.type).toBe("BooleanLiteral");
+    expect(node.value).toBe(false);
+  });
+
+  test("identifiant", () => {
+    const node = expr("x;") as Identifier;
+    expect(node.type).toBe("Identifier");
+    expect(node.name).toBe("x");
+  });
+});
+
+describe("Parser — expressions arithmétiques", () => {
+  test("addition", () => {
+    const node = expr("1 + 2;") as BinaryExpression;
+    expect(node.type).toBe("BinaryExpression");
+    expect(node.operator).toBe("+");
+    expect((node.left as NumericLiteral).value).toBe(1);
+    expect((node.right as NumericLiteral).value).toBe(2);
+  });
+
+  test("précédence * avant +", () => {
+    const node = expr("1 + 2 * 3;") as BinaryExpression;
+    expect(node.operator).toBe("+");
+    expect((node.right as BinaryExpression).operator).toBe("*");
+  });
+
+  test("parenthèses", () => {
+    const node = expr("(1 + 2) * 3;") as BinaryExpression;
+    expect(node.operator).toBe("*");
+    expect((node.left as BinaryExpression).operator).toBe("+");
+  });
+});
+
+describe("Parser — expressions logiques", () => {
+  test("tsy (négation)", () => {
+    const node = expr("tsy marina;") as UnaryExpression;
+    expect(node.type).toBe("UnaryExpression");
+    expect(node.operator).toBe("tsy");
+    expect((node.operand as BooleanLiteral).value).toBe(true);
+  });
+
+  test("ary (et)", () => {
+    const node = expr("a ary b;") as BinaryExpression;
+    expect(node.operator).toBe("ary");
+  });
+
+  test("na (ou)", () => {
+    const node = expr("a na b;") as BinaryExpression;
+    expect(node.operator).toBe("na");
+  });
+
+  test("précédence : ary avant na", () => {
+    // a na b ary c  →  a na (b ary c)
+    const node = expr("a na b ary c;") as BinaryExpression;
+    expect(node.operator).toBe("na");
+    expect((node.right as BinaryExpression).operator).toBe("ary");
+  });
+});
+
+describe("Parser — assignation", () => {
+  test("assignation simple", () => {
+    const node = expr("x = 5;") as AssignmentExpression;
+    expect(node.type).toBe("AssignmentExpression");
+    expect(node.name).toBe("x");
+    expect((node.value as NumericLiteral).value).toBe(5);
+  });
+});
+
+describe("Parser — appel de fonction", () => {
+  test("sans arguments", () => {
+    const node = expr("f();") as CallExpression;
+    expect(node.type).toBe("CallExpression");
+    expect(node.callee).toBe("f");
+    expect(node.args).toHaveLength(0);
+  });
+
+  test("avec arguments", () => {
+    const node = expr("ampio(1, 2);") as CallExpression;
+    expect(node.callee).toBe("ampio");
+    expect(node.args).toHaveLength(2);
+    expect((node.args[0] as NumericLiteral).value).toBe(1);
+    expect((node.args[1] as NumericLiteral).value).toBe(2);
+  });
+});
+
+describe("Parser — asehoy", () => {
+  test("print simple", () => {
+    const node = first('asehoy "Salama";') as PrintStatement;
+    expect(node.type).toBe("PrintStatement");
+    expect((node.value as StringLiteral).value).toBe("Salama");
+  });
+});
+
+describe("Parser — raha / ankoatra", () => {
+  test("if sans else", () => {
+    const node = first("raha x > 0 dia asehoy x; farany") as IfStatement;
+    expect(node.type).toBe("IfStatement");
+    expect(node.alternate).toBeNull();
+    expect(node.consequent).toHaveLength(1);
+  });
+
+  test("if avec else", () => {
+    const node = first(
+      "raha x > 0 dia asehoy x; ankoatra dia asehoy 0; farany"
+    ) as IfStatement;
+    expect(node.alternate).not.toBeNull();
+    expect(node.alternate).toHaveLength(1);
+  });
+});
+
+describe("Parser — avereno raha", () => {
+  test("while basique", () => {
+    const node = first("avereno raha x > 0 dia asehoy x; farany") as WhileStatement;
+    expect(node.type).toBe("WhileStatement");
+    expect(node.body).toHaveLength(1);
+  });
+});
+
+describe("Parser — asa / mamoaka", () => {
+  test("déclaration de fonction", () => {
+    const node = first(
+      "asa ampio(a: Isa, b: Isa): Isa dia mamoaka a + b; farany"
+    ) as FunctionDeclaration;
+    expect(node.type).toBe("FunctionDeclaration");
+    expect(node.name).toBe("ampio");
+    expect(node.params).toHaveLength(2);
+    expect(node.params[0].name).toBe("a");
+    expect(node.params[0].paramType).toBe("Isa");
+    expect(node.returnType).toBe("Isa");
+    expect(node.body).toHaveLength(1);
+  });
+
+  test("mamoaka", () => {
+    const node = first(
+      "asa f(): Isa dia mamoaka 1; farany"
+    ) as FunctionDeclaration;
+    const ret = node.body[0] as ReturnStatement;
+    expect(ret.type).toBe("ReturnStatement");
+    expect((ret.value as NumericLiteral).value).toBe(1);
+  });
+
+  test("fonction sans type de retour", () => {
+    const node = first("asa f() dia mamoaka; farany") as FunctionDeclaration;
+    expect(node.returnType).toBeNull();
+    const ret = node.body[0] as ReturnStatement;
+    expect(ret.value).toBeNull();
+  });
+});
+
+describe("Parser — erreurs", () => {
+  test("point-virgule manquant", () => {
+    expect(() => parse("42")).toThrow();
+  });
+
+  test("farany manquant", () => {
+    expect(() => parse("raha x dia asehoy x;")).toThrow();
+  });
+
+  test("type inconnu dans les paramètres", () => {
+    expect(() => parse("asa f(x: Inconnu) dia farany")).toThrow();
+  });
+});
