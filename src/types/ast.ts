@@ -7,6 +7,7 @@ export type NodeType =
   | "ReturnStatement"
   | "PrintStatement"
   | "VariableDeclaration"
+  | "ImportStatement"
   | "ExpressionStatement"
   | "AssignmentExpression"
   | "BinaryExpression"
@@ -44,11 +45,18 @@ export interface Program extends BaseNode {
 export type Statement =
   | FunctionDeclaration
   | VariableDeclaration
+  | ImportStatement
   | IfStatement
   | WhileStatement
   | ReturnStatement
   | PrintStatement
   | ExpressionStatement;
+
+/** ampidiro "file.baiko"; */
+export interface ImportStatement extends BaseNode {
+  type: "ImportStatement";
+  path: string;
+}
 
 /** x: Isa = expr; ou x: Mety(Isa) [= expr]; */
 export interface VariableDeclaration extends BaseNode {

@@ -4,6 +4,7 @@ import {
   Expression,
   VariableDeclaration,
   FunctionDeclaration,
+  ImportStatement,
   IfStatement,
   WhileStatement,
   ReturnStatement,
@@ -22,6 +23,10 @@ import {
   MetyType,
   VarType,
 } from "../types/ast";
+import { Lexer } from "../lexer/lexer";
+import { Parser } from "../parser/parser";
+
+export type FileResolver = (path: string) => string;
 
 // ---- Valeurs runtime ----
 
@@ -79,9 +84,14 @@ export class RuntimeError extends Error {
 export class Interpreter {
   private global = new Environment();
   private readonly printFn: (s: string) => void;
+  private readonly resolver: FileResolver;
+  private readonly imported = new Set<string>();
 
-  constructor(printFn?: (s: string) => void) {
+  constructor(printFn?: (s: string) => void, resolver?: FileResolver) {
     this.printFn = printFn ?? ((s) => console.log(s));
+    this.resolver = resolver ?? (() => {
+      throw new RuntimeError("Tsy azo ampidirina ny rakitra ato amin'ity toerana ity");
+    });
   }
 
   run(program: Program): void {
@@ -96,6 +106,7 @@ export class Interpreter {
     switch (stmt.type) {
       case "VariableDeclaration":  return this.execVarDecl(stmt as VariableDeclaration, env);
       case "FunctionDeclaration":  return this.execFuncDecl(stmt as FunctionDeclaration, env);
+      case "ImportStatement":      return this.execImport(stmt as ImportStatement, env);
       case "IfStatement":          return this.execIf(stmt as IfStatement, env);
       case "WhileStatement":       return this.execWhile(stmt as WhileStatement, env);
       case "ReturnStatement":      return this.execReturn(stmt as ReturnStatement, env);
@@ -108,6 +119,22 @@ export class Interpreter {
     for (const stmt of stmts) {
       const signal = this.execStmt(stmt, env);
       if (signal instanceof ReturnSignal) return signal;
+    }
+  }
+
+  private execImport(node: ImportStatement, env: Environment): void {
+    if (this.imported.has(node.path)) return; // déjà importé ou import circulaire
+    this.imported.add(node.path);
+    let content: string;
+    try {
+      content = this.resolver(node.path);
+    } catch (e) {
+      throw new RuntimeError(`Tsy azo ampidirina ny "${node.path}": ${(e as Error).message}`);
+    }
+    const tokens = new Lexer(content).tokenize();
+    const program = new Parser(tokens).parse();
+    for (const stmt of program.body) {
+      this.execStmt(stmt, env);
     }
   }
 

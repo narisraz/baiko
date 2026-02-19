@@ -1,0 +1,25 @@
+# Ohatra ampidiro — fampiasana ny librairie kajy.baiko
+
+ampidiro "kajy.baiko";
+
+# Kajy tsotra
+asehoy ampio(10, 32);
+asehoy esorina(100, 58);
+asehoy ampidiana(6, 7);
+asehoy zarana(100, 4);
+
+# Fampitahana
+raha ampio(3, 4) > 5 dia
+  asehoy "lehibe noho ny 5";
+farany
+
+# Kariran'ny isa 1 hatramin'ny 5
+kaonty: Isa = 1;
+avereno raha kaonty <= 5 dia
+  asehoy ampidiana(kaonty, kaonty);
+  kaonty = kaonty + 1;
+farany
+
+# Faktiely
+asehoy facto(5);
+asehoy facto(10);

@@ -23,6 +23,7 @@ import {
   BaikoType,
   MetyType,
   VarType,
+  ImportStatement,
 } from "../types/ast";
 
 const TYPE_TOKENS = new Set([TokenType.Isa, TokenType.Soratra, TokenType.Marina]);
@@ -83,11 +84,12 @@ export class Parser {
       return this.parseVariableDeclaration();
     }
     switch (this.peek().type) {
-      case TokenType.Asa:     return this.parseFunctionDeclaration();
-      case TokenType.Raha:    return this.parseIfStatement();
-      case TokenType.Mamoaka: return this.parseReturnStatement();
-      case TokenType.Asehoy:  return this.parsePrintStatement();
-      default:                return this.parseExpressionStatement();
+      case TokenType.Asa:      return this.parseFunctionDeclaration();
+      case TokenType.Raha:     return this.parseIfStatement();
+      case TokenType.Mamoaka:  return this.parseReturnStatement();
+      case TokenType.Asehoy:   return this.parsePrintStatement();
+      case TokenType.Ampidiro: return this.parseImportStatement();
+      default:                 return this.parseExpressionStatement();
     }
   }
 
@@ -212,6 +214,14 @@ export class Parser {
     const value = this.parseExpression();
     this.expect(TokenType.Semicolon);
     return { type: "PrintStatement", value };
+  }
+
+  /** ampidiro "path"; */
+  private parseImportStatement(): ImportStatement {
+    this.expect(TokenType.Ampidiro);
+    const tok = this.expect(TokenType.String);
+    this.expect(TokenType.Semicolon);
+    return { type: "ImportStatement", path: tok.value };
   }
 
   private parseExpressionStatement(): ExpressionStatement {

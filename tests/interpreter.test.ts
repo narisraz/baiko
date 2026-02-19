@@ -1,11 +1,11 @@
 import { Lexer } from "../src/lexer/lexer";
 import { Parser } from "../src/parser/parser";
-import { Interpreter, RuntimeError } from "../src/interpreter/interpreter";
+import { Interpreter, RuntimeError, FileResolver } from "../src/interpreter/interpreter";
 
-function run(src: string, output: string[] = []): string[] {
+function run(src: string, resolver?: FileResolver): string[] {
   const tokens = new Lexer(src).tokenize();
   const ast = new Parser(tokens).parse();
-  const interpreter = new Interpreter();
+  const interpreter = new Interpreter(undefined, resolver);
 
   const lines: string[] = [];
   const spy = jest.spyOn(console, "log").mockImplementation((...args) => {
@@ -262,5 +262,57 @@ describe("Interpréteur — fonctions", () => {
 
   test("appel sur un non-fonction", () => {
     expect(() => run("x: Isa = 1; x(2);")).toThrow("tsy asa");
+  });
+});
+
+describe("Interpréteur — ampidiro (imports)", () => {
+  const mathLib = `
+    asa double(n: Isa): Isa dia
+      mamoaka n * 2;
+    farany
+    asa carre(n: Isa): Isa dia
+      mamoaka n * n;
+    farany
+  `;
+
+  const mockResolver: FileResolver = (p) => {
+    if (p === "math.baiko") return mathLib;
+    throw new Error(`Rakitra tsy misy: ${p}`);
+  };
+
+  test("importe et utilise une fonction", () => {
+    const src = `
+      ampidiro "math.baiko";
+      asehoy double(5);
+    `;
+    expect(run(src, mockResolver)).toEqual(["10"]);
+  });
+
+  test("importe plusieurs fonctions", () => {
+    const src = `
+      ampidiro "math.baiko";
+      asehoy double(3);
+      asehoy carre(4);
+    `;
+    expect(run(src, mockResolver)).toEqual(["6", "16"]);
+  });
+
+  test("import double ignoré (guard circulaire)", () => {
+    const src = `
+      ampidiro "math.baiko";
+      ampidiro "math.baiko";
+      asehoy double(2);
+    `;
+    expect(run(src, mockResolver)).toEqual(["4"]);
+  });
+
+  test("fichier introuvable → erreur", () => {
+    expect(() => run('ampidiro "inexistant.baiko";', mockResolver))
+      .toThrow("Tsy azo ampidirina");
+  });
+
+  test("sans resolver → erreur", () => {
+    expect(() => run('ampidiro "math.baiko";'))
+      .toThrow("Tsy azo ampidirina");
   });
 });

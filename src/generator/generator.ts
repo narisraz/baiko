@@ -4,6 +4,7 @@ import {
   Expression,
   FunctionDeclaration,
   VariableDeclaration,
+  ImportStatement,
   IfStatement,
   WhileStatement,
   ReturnStatement,
@@ -20,9 +21,18 @@ import {
   UnaryExpression,
   MetyType,
 } from "../types/ast";
+import { Lexer } from "../lexer/lexer";
+import { Parser } from "../parser/parser";
+import { FileResolver } from "../interpreter/interpreter";
 
 export class Generator {
   private indent: number = 0;
+  private readonly resolver: FileResolver | null;
+  private readonly imported = new Set<string>();
+
+  constructor(resolver?: FileResolver) {
+    this.resolver = resolver ?? null;
+  }
 
   generate(program: Program): string {
     return program.body.map((s) => this.genStatement(s)).join("\n");
@@ -34,6 +44,7 @@ export class Generator {
     switch (stmt.type) {
       case "FunctionDeclaration":  return this.genFunction(stmt as FunctionDeclaration);
       case "VariableDeclaration":  return this.genVarDecl(stmt as VariableDeclaration);
+      case "ImportStatement":      return this.genImport(stmt as ImportStatement);
       case "IfStatement":          return this.genIf(stmt as IfStatement);
       case "WhileStatement":       return this.genWhile(stmt as WhileStatement);
       case "ReturnStatement":      return this.genReturn(stmt as ReturnStatement);
@@ -49,6 +60,19 @@ export class Generator {
       return `${this.pad()}let /** @type {${typeAnnotation}} */ ${node.name};`;
     }
     return `${this.pad()}let /** @type {${typeAnnotation}} */ ${node.name} = ${this.genExpression(node.value)};`;
+  }
+
+  private genImport(node: ImportStatement): string {
+    if (this.imported.has(node.path)) return `// (${node.path} déjà importé)`;
+    this.imported.add(node.path);
+    if (!this.resolver) {
+      return `// ampidiro "${node.path}" (tsy voafaritra — resolver tsy nomena)`;
+    }
+    const content = this.resolver(node.path);
+    const tokens = new Lexer(content).tokenize();
+    const program = new Parser(tokens).parse();
+    const lines = program.body.map((s) => this.genStatement(s)).join("\n");
+    return `// --- ampidiro "${node.path}" ---\n${lines}\n// --- farany "${node.path}" ---`;
   }
 
   private genFunction(node: FunctionDeclaration): string {

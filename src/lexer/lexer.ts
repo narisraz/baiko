@@ -24,6 +24,9 @@ export enum TokenType {
   // Nullable type wrapper
   Mety = "Mety",         // Mety(Type) — type optionnel
 
+  // Import
+  Ampidiro = "Ampidiro", // ampidiro "file.baiko" — importer un fichier
+
   // Logical operators
   And = "And",           // ary (et)
   Or = "Or",             // na (ou)
@@ -74,6 +77,7 @@ const KEYWORDS: Record<string, TokenType> = {
   diso:     TokenType.False,
   tsisy:    TokenType.Tsisy,
   Mety:     TokenType.Mety,
+  ampidiro: TokenType.Ampidiro,
   ary:      TokenType.And,
   na:       TokenType.Or,
   tsy:      TokenType.Not,

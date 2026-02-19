@@ -35,19 +35,29 @@ if (!filePath) {
 }
 
 const source = fs.readFileSync(filePath, "utf-8");
+const dir = path.dirname(filePath);
+
+// Résout les chemins d'import relatifs au fichier en cours
+function makeResolver(baseDir: string) {
+  return (importPath: string) => {
+    const resolved = path.resolve(baseDir, importPath);
+    return fs.readFileSync(resolved, "utf-8");
+  };
+}
 
 try {
   const ast = parse(source);
+  const resolver = makeResolver(dir);
 
   switch (flag) {
     case "--compile":
     default: {
-      console.log(new Generator().generate(ast));
+      console.log(new Generator(resolver).generate(ast));
       break;
     }
     case "--run":
     case "--interpret": {
-      new Interpreter().run(ast);
+      new Interpreter(undefined, resolver).run(ast);
       break;
     }
   }

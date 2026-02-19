@@ -260,6 +260,14 @@ describe("Parser — asa / mamoaka", () => {
   });
 });
 
+describe("Parser — ampidiro", () => {
+  test("import simple", () => {
+    const node = first('ampidiro "utils.baiko";') as any;
+    expect(node.type).toBe("ImportStatement");
+    expect(node.path).toBe("utils.baiko");
+  });
+});
+
 describe("Parser — erreurs", () => {
   test("point-virgule manquant", () => {
     expect(() => parse("42")).toThrow();
