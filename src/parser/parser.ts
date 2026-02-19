@@ -178,6 +178,7 @@ export class Parser {
 
   /** x: Isa = expr;  ou  x: Mety(Isa) [= expr]; */
   private parseVariableDeclaration(): VariableDeclaration {
+    const identTok = this.peek();
     const name = this.expect(TokenType.Identifier).value;
     this.expect(TokenType.Colon);
     const varType = this.parseVarType();
@@ -194,7 +195,7 @@ export class Parser {
     }
 
     this.expect(TokenType.Semicolon);
-    return { type: "VariableDeclaration", varType, name, value, exported: false };
+    return { type: "VariableDeclaration", varType, name, value, exported: false, line: identTok.line, col: identTok.column };
   }
 
   /** Parse un type de variable : BaikoType, Mety(BaikoType) ou Lisitra(Type) */

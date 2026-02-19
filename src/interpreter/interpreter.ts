@@ -216,7 +216,7 @@ export class Interpreter {
       return;
     }
     const value = await this.execExpr(node.value, env);
-    this.checkType(value, node.varType, node.name);
+    this.checkType(value, node.varType, node.name, this.nodePos(node));
     // Propage le type d'élément déclaré sur la liste (pour vérification ultérieure)
     if (this.isList(value) && typeof node.varType === "object" && (node.varType as LisitraType).kind === "Lisitra") {
       (value as BaikoList).elementType = (node.varType as LisitraType).inner;
@@ -578,7 +578,7 @@ export class Interpreter {
     return v !== null && typeof v === "object" && (v as BaikoNative).kind === "native";
   }
 
-  private checkType(value: BaikoValue, expected: VarType, name: string): void {
+  private checkType(value: BaikoValue, expected: VarType, name: string, nodePos?: string): void {
     // Les valeurs natives passent la vérification de type (interop JS)
     if (typeof value === "object" && value !== null && (value as BaikoNative).kind === "native") return;
     if (typeof expected === "object") {
@@ -597,8 +597,8 @@ export class Interpreter {
           throw new RuntimeError(`Tsy mety ny karazana ho an'ny "${name}": niriny lisitra fa ${this.typeOf(value)} no noraisina`);
         }
         const inner = (obj as LisitraType).inner;
-        for (let i = 0; i < (value as BaikoList).elements.length; i++) {
-          this.checkElementType((value as BaikoList).elements[i], inner, `${name}[${i}]`);
+        for (const el of (value as BaikoList).elements) {
+          this.checkElementType(el, inner, name, nodePos);
         }
       }
     } else {
