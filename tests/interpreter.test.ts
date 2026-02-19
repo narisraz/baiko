@@ -460,6 +460,61 @@ describe("Interpréteur — Lisitra (liste)", () => {
     await expect(run(src)).rejects.toThrow(RuntimeError);
   });
 
+  test("ovay (map)", async () => {
+    const src = `
+      asa double(x: Isa): Isa dia mamoaka x * 2; farany
+      n: Lisitra(Isa) = [1, 2, 3];
+      asehoy n.ovay(double);
+    `;
+    expect(await run(src)).toEqual(["[2, 4, 6]"]);
+  });
+
+  test("tsingano (filter)", async () => {
+    const src = `
+      asa grand(x: Isa): Marina dia mamoaka x > 2; farany
+      n: Lisitra(Isa) = [1, 2, 3, 4];
+      asehoy n.tsingano(grand);
+    `;
+    expect(await run(src)).toEqual(["[3, 4]"]);
+  });
+
+  test("atambaro (reduce)", async () => {
+    const src = `
+      asa somme(acc: Isa, x: Isa): Isa dia mamoaka acc + x; farany
+      n: Lisitra(Isa) = [1, 2, 3, 4];
+      asehoy n.atambaro(0, somme);
+    `;
+    expect(await run(src)).toEqual(["10"]);
+  });
+
+  test("ovay puis tsingano (chaînage)", async () => {
+    const src = `
+      asa double(x: Isa): Isa dia mamoaka x * 2; farany
+      asa grand(x: Isa): Marina dia mamoaka x > 4; farany
+      n: Lisitra(Isa) = [1, 2, 3, 4];
+      asehoy n.ovay(double).tsingano(grand);
+    `;
+    expect(await run(src)).toEqual(["[6, 8]"]);
+  });
+
+  test("ovay sur liste vide → liste vide", async () => {
+    const src = `
+      asa double(x: Isa): Isa dia mamoaka x * 2; farany
+      v: Lisitra(Isa);
+      asehoy v.ovay(double);
+    `;
+    expect(await run(src)).toEqual(["[]"]);
+  });
+
+  test("atambaro — concaténation de chaînes", async () => {
+    const src = `
+      asa concat(acc: Soratra, x: Soratra): Soratra dia mamoaka acc + x; farany
+      mots: Lisitra(Soratra) = ["a", "b", "c"];
+      asehoy mots.atambaro("", concat);
+    `;
+    expect(await run(src)).toEqual(["abc"]);
+  });
+
   test("type invalide → erreur si non-lisitra", async () => {
     await expect(run('x: Lisitra(Isa) = "texte";')).rejects.toThrow("Tsy mety ny karazana");
   });

@@ -208,11 +208,20 @@ export class Generator {
       }
       case "MemberCallExpression": {
         const mc = expr as MemberCallExpression;
+        const jsMethod: Record<string, string> = { ampidiro: "push", ovay: "map", tsingano: "filter", atambaro: "reduce" };
+        // atambaro(init, fn) → reduce(fn, init)  (JS reduce prend le callback en premier)
+        if (mc.method === "atambaro" && mc.args.length === 2) {
+          return `${this.genExpression(mc.object)}.reduce(${this.genExpression(mc.args[1])}, ${this.genExpression(mc.args[0])})`;
+        }
+        const method = jsMethod[mc.method] ?? mc.method;
         const args = mc.args.map((a) => this.genExpression(a)).join(", ");
-        return `${mc.object}.${mc.method}(${args})`;
+        return `${this.genExpression(mc.object)}.${method}(${args})`;
       }
-      case "MemberExpression":
-        return `${(expr as MemberExpression).object}.${(expr as MemberExpression).property}`;
+      case "MemberExpression": {
+        const me = expr as MemberExpression;
+        const jsProp: Record<string, string> = { isany: "length" };
+        return `${this.genExpression(me.object)}.${jsProp[me.property] ?? me.property}`;
+      }
       case "AwaitExpression":
         return `await ${this.genExpression((expr as AwaitExpression).value)}`;
       case "Identifier":

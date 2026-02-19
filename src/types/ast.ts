@@ -214,18 +214,18 @@ export interface AwaitExpression extends BaseNode {
   value: Expression;
 }
 
-/** pkg.method(args) — appel de méthode sur un objet natif */
+/** expr.method(args) — appel de méthode sur une expression */
 export interface MemberCallExpression extends BaseNode {
   type: "MemberCallExpression";
-  object: string;
+  object: Expression;
   method: string;
   args: Expression[];
 }
 
-/** pkg.property — accès de propriété sur un objet natif */
+/** expr.property — accès de propriété sur une expression */
 export interface MemberExpression extends BaseNode {
   type: "MemberExpression";
-  object: string;
+  object: Expression;
   property: string;
 }
 

@@ -34,6 +34,7 @@
         <li data-id="loop">Fitodiavana</li>
         <li data-id="func">Asa</li>
         <li data-id="fizzbuzz">FizzBuzz</li>
+        <li data-id="lisitra">Lisitra</li>
       </ul>
     </aside>
 
@@ -75,6 +76,8 @@
       func: `# Asa (fonksiona)\nasa ampio(a: Isa, b: Isa): Isa dia\n  mamoaka a + b;\nfarany\n\nasa tohaina(s: Soratra): Soratra dia\n  mamoaka s + " - vita!";\nfarany\n\nvokatra: Isa = ampio(10, 32);\nasehoy vokatra;\nasehoy tohaina("Salama");\n`,
 
       fizzbuzz: `# FizzBuzz\nn: Isa = 1;\navereno raha n <= 20 dia\n  raha n - (n / 15) * 15 == 0 dia\n    asehoy "FizzBuzz";\n  ankoatra dia\n    raha n - (n / 3) * 3 == 0 dia\n      asehoy "Fizz";\n    ankoatra dia\n      raha n - (n / 5) * 5 == 0 dia\n        asehoy "Buzz";\n      ankoatra dia\n        asehoy n;\n      farany\n    farany\n  farany\n  n = n + 1;\nfarany\n`,
+
+      lisitra: `# Lisitra (liste)\nnombres: Lisitra(Isa) = [10, 20, 30];\nasehoy nombres[0];\nnombres.ampidiro(40);\nasehoy nombres.isany;\nnombres[0] = 99;\nasehoy nombres;\n\n# ovay (map)\nasa roa(x: Isa): Isa dia\n  mamoaka x * 2;\nfarany\nasehoy nombres.ovay(roa);\n\n# tsingano (filter)\nasa lehibe(x: Isa): Marina dia\n  mamoaka x > 50;\nfarany\nasehoy nombres.tsingano(lehibe);\n\n# atambaro (reduce)\nasa manampy(acc: Isa, x: Isa): Isa dia\n  mamoaka acc + x;\nfarany\nasehoy nombres.atambaro(0, manampy);\n`,
     };
 
     // ---- Lint (surlignage d'erreurs) ----
@@ -144,7 +147,8 @@
     const BAIKO_KEYWORDS = [
       "asa", "andrasana", "raha", "ankoatra", "avereno raha", "mamoaka",
       "dia", "farany", "asehoy", "ary", "na", "tsy", "miandry", "ampidiro", "avoaka",
-      "marina", "diso", "tsisy", "Isa", "Soratra", "Marina", "Mety",
+      "ovay", "tsingano", "atambaro", "isany",
+      "marina", "diso", "tsisy", "Isa", "Soratra", "Marina", "Mety", "Lisitra",
     ];
 
     function baikoHint(cm) {
@@ -158,7 +162,7 @@
       const text = cm.getValue();
       const userDefined = new Set();
       const fnRe  = /\basa\s+([a-zA-Z_]\w*)\s*\(/g;
-      const varRe = /\b([a-zA-Z_]\w*)\s*:\s*(?:Mety\s*\(\s*)?(?:Isa|Soratra|Marina)\b/g;
+      const varRe = /\b([a-zA-Z_]\w*)\s*:\s*(?:Mety\s*\(\s*)?(?:Lisitra\s*\([^)]*\)|Isa|Soratra|Marina)\b/g;
       let m;
       while ((m = fnRe.exec(text))  !== null) userDefined.add(m[1]);
       while ((m = varRe.exec(text)) !== null) userDefined.add(m[1]);
@@ -179,9 +183,9 @@
       start: [
         { regex: /#.*/, token: "comment" },
         { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
-        { regex: /\b(?:avereno raha|asa|andrasana|miandry|raha|ankoatra|mamoaka|dia|farany|asehoy|ary|na|tsy|ampidiro|avoaka)\b/, token: "keyword" },
+        { regex: /\b(?:avereno raha|asa|andrasana|miandry|raha|ankoatra|mamoaka|dia|farany|asehoy|ary|na|tsy|ampidiro|avoaka|ovay|tsingano|atambaro|isany)\b/, token: "keyword" },
         { regex: /\b(?:marina|diso|tsisy)\b/, token: "atom" },
-        { regex: /\b(?:Isa|Soratra|Marina|Mety)\b/, token: "variable-2" },
+        { regex: /\b(?:Isa|Soratra|Marina|Mety|Lisitra)\b/, token: "variable-2" },
         { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },
         { regex: /[+\-*/<>=!]+/, token: "operator" },
         { regex: /[a-zA-Z_]\w*/, token: "variable" },

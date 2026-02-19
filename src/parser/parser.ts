@@ -444,41 +444,18 @@ export class Parser {
         } while (this.match(TokenType.Comma));
       }
       this.expect(TokenType.RightBracket);
-      return { type: "ListLiteral", elements } as ListLiteral;
+      return this.parsePostfix({ type: "ListLiteral", elements } as ListLiteral, tok);
     }
 
     if (tok.type === TokenType.Identifier) {
       this.advance();
-      // Member access: obj.property  or  obj.method(args)
-      // Accept any token after dot as name (supports keyword method names like "ampidiro")
-      if (this.match(TokenType.Dot)) {
-        const nameTok = this.peek();
-        if (nameTok.type === TokenType.EOF) {
-          throw new Error(`Tokony ho anarana aorian'ny "." ${pos(nameTok.line, nameTok.column)}`);
-        }
-        const name = this.advance().value;
-        if (this.match(TokenType.LeftParen)) {
-          const args = this.parseArgs();
-          this.expect(TokenType.RightParen);
-          return { type: "MemberCallExpression", object: tok.value, method: name, args, line: tok.line, col: tok.column } as MemberCallExpression;
-        }
-        return { type: "MemberExpression", object: tok.value, property: name } as MemberExpression;
-      }
       // Regular call expression: name(args)
       if (this.match(TokenType.LeftParen)) {
         const args = this.parseArgs();
         this.expect(TokenType.RightParen);
         return { type: "CallExpression", callee: tok.value, args } as CallExpression;
       }
-      // Index expression(s): name[expr][expr]...
-      let result: Expression = { type: "Identifier", name: tok.value } as Identifier;
-      while (this.check(TokenType.LeftBracket)) {
-        this.advance();
-        const index = this.parseExpression();
-        this.expect(TokenType.RightBracket);
-        result = { type: "IndexExpression", object: result, index } as IndexExpression;
-      }
-      return result;
+      return this.parsePostfix({ type: "Identifier", name: tok.value } as Identifier, tok);
     }
 
     if (tok.type === TokenType.True || tok.type === TokenType.False) {
@@ -513,6 +490,33 @@ export class Parser {
     const value = this.parseExpression();
     this.expect(TokenType.Semicolon);
     return { type: "IndexAssignmentStatement", object: name, index, value, line: identTok.line, col: identTok.column } as IndexAssignmentStatement;
+  }
+
+  /** Apply postfix chain ([index], .method(args), .property) to a base expression. */
+  private parsePostfix(base: Expression, refTok: Token): Expression {
+    let result = base;
+    while (this.check(TokenType.Dot) || this.check(TokenType.LeftBracket)) {
+      if (this.match(TokenType.Dot)) {
+        const nameTok = this.peek();
+        if (nameTok.type === TokenType.EOF) {
+          throw new Error(`Tokony ho anarana aorian'ny "." ${pos(nameTok.line, nameTok.column)}`);
+        }
+        const name = this.advance().value;
+        if (this.match(TokenType.LeftParen)) {
+          const args = this.parseArgs();
+          this.expect(TokenType.RightParen);
+          result = { type: "MemberCallExpression", object: result, method: name, args, line: refTok.line, col: refTok.column } as MemberCallExpression;
+        } else {
+          result = { type: "MemberExpression", object: result, property: name } as MemberExpression;
+        }
+      } else {
+        this.advance(); // consume [
+        const index = this.parseExpression();
+        this.expect(TokenType.RightBracket);
+        result = { type: "IndexExpression", object: result, index } as IndexExpression;
+      }
+    }
+    return result;
   }
 
   private parseArgs(): Expression[] {

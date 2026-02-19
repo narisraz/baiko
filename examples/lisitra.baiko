@@ -1,6 +1,52 @@
+# --- Lisitra fototra ---
 nombres: Lisitra(Isa) = [10, 20, 30];
-asehoy nombres[0];
+asehoy nombres[0];        # 10
 nombres.ampidiro(40);
-asehoy nombres.isany;
+asehoy nombres.isany;     # 4
 nombres[0] = 99;
-asehoy nombres;
+asehoy nombres;           # [99, 20, 30, 40]
+
+# --- ovay (map) ---
+asa roa(x: Isa): Isa dia
+  mamoaka x * 2;
+farany
+
+doubled: Lisitra(Isa) = nombres.ovay(roa);
+asehoy doubled;           # [198, 40, 60, 80]
+
+# --- tsingano (filter) ---
+asa mihoatraNy50(x: Isa): Marina dia
+  mamoaka x > 50;
+farany
+
+lehibe_ireo: Lisitra(Isa) = nombres.tsingano(mihoatraNy50);
+asehoy lehibe_ireo;       # [99, 60, 80]
+
+# --- atambaro (reduce) ---
+asa manampy(acc: Isa, x: Isa): Isa dia
+  mamoaka acc + x;
+farany
+
+total: Isa = nombres.atambaro(0, manampy);
+asehoy total;             # 189
+
+# --- chaînage ---
+asa triple(x: Isa): Isa dia
+  mamoaka x * 3;
+farany
+
+asa mihoatraNy4(x: Isa): Marina dia
+  mamoaka x > 4;
+farany
+
+asehoy [1, 2, 3, 4, 5].ovay(triple).tsingano(mihoatraNy4);   # [3, 6, 9, 12, 15] → [6, 9, 12, 15]
+
+# --- Lisitra imbriquée ---
+matrice: Lisitra(Lisitra(Isa)) = [[1, 2], [3, 4], [5, 6]];
+asehoy matrice[1];        # [3, 4]
+asehoy matrice[1][0];     # 3
+
+# --- Lisitra de Soratra ---
+mots: Lisitra(Soratra) = ["bonjour", "monde"];
+mots.ampidiro("!");
+asehoy mots;              # [bonjour, monde, !]

@@ -371,17 +371,49 @@ export class Interpreter {
   }
 
   private async execMemberCall(node: MemberCallExpression, env: Environment): Promise<BaikoValue> {
-    const obj = env.get(node.object);
+    const obj = await this.execExpr(node.object, env);
     // BaikoList methods
     if (this.isList(obj)) {
-      if (node.method === "ampidiro") {
-        if (node.args.length !== 1) throw new RuntimeError('"ampidiro" mitaky tohan-teny iray');
-        const val = await this.execExpr(node.args[0], env);
-        this.checkElementType(val, (obj as BaikoList).elementType, node.object, this.nodePos(node));
-        (obj as BaikoList).elements.push(val);
-        return null;
+      const list = obj as BaikoList;
+      const objName = node.object.type === "Identifier" ? (node.object as Identifier).name : "lisitra";
+      switch (node.method) {
+        case "ampidiro": {
+          if (node.args.length !== 1) throw new RuntimeError('"ampidiro" mitaky tohan-teny iray');
+          const val = await this.execExpr(node.args[0], env);
+          this.checkElementType(val, list.elementType, objName, this.nodePos(node));
+          list.elements.push(val);
+          return null;
+        }
+        case "ovay": {
+          if (node.args.length !== 1) throw new RuntimeError('"ovay" mitaky tohan-teny iray (asa)');
+          const fn = await this.execExpr(node.args[0], env);
+          const mapped: BaikoValue[] = [];
+          for (const el of list.elements) {
+            mapped.push(await this.applyCallable(fn, [el]));
+          }
+          return { kind: "list", elements: mapped, elementType: list.elementType };
+        }
+        case "tsingano": {
+          if (node.args.length !== 1) throw new RuntimeError('"tsingano" mitaky tohan-teny iray (asa)');
+          const fn = await this.execExpr(node.args[0], env);
+          const kept: BaikoValue[] = [];
+          for (const el of list.elements) {
+            if (this.isTruthy(await this.applyCallable(fn, [el]))) kept.push(el);
+          }
+          return { kind: "list", elements: kept, elementType: list.elementType };
+        }
+        case "atambaro": {
+          if (node.args.length !== 2) throw new RuntimeError('"atambaro" mitaky tohan-teny roa (soatoavina voalohany, asa)');
+          let acc = await this.execExpr(node.args[0], env);
+          const fn = await this.execExpr(node.args[1], env);
+          for (const el of list.elements) {
+            acc = await this.applyCallable(fn, [acc, el]);
+          }
+          return acc;
+        }
+        default:
+          throw new RuntimeError(`"${node.method}" tsy fantatry ny lisitra`);
       }
-      throw new RuntimeError(`"${node.method}" tsy fantatry ny lisitra`);
     }
     if (
       obj === null ||
@@ -389,13 +421,13 @@ export class Interpreter {
       (obj as BaikoNative).kind !== "native"
     ) {
       throw new RuntimeError(
-        `"${node.object}" dia tsy sehatra natif — ${this.typeOf(obj)} no noraisina`
+        `tsy sehatra natif — ${this.typeOf(obj)} no noraisina`
       );
     }
     const native = (obj as BaikoNative).value as Record<string, unknown>;
     const fn = native[node.method];
     if (typeof fn !== "function") {
-      throw new RuntimeError(`"${node.object}.${node.method}" tsy asa natif`);
+      throw new RuntimeError(`".${node.method}" tsy asa natif`);
     }
     const args = await Promise.all(node.args.map((a) => this.execExpr(a, env)));
     const result = (fn as (...a: unknown[]) => unknown).call(native, ...args);
@@ -403,7 +435,7 @@ export class Interpreter {
   }
 
   private async execMemberAccess(node: MemberExpression, env: Environment): Promise<BaikoValue> {
-    const obj = env.get(node.object);
+    const obj = await this.execExpr(node.object, env);
     // BaikoList properties
     if (this.isList(obj)) {
       if (node.property === "isany") return (obj as BaikoList).elements.length;
@@ -411,7 +443,7 @@ export class Interpreter {
     }
     if (obj === null || typeof obj !== "object" || (obj as BaikoNative).kind !== "native") {
       throw new RuntimeError(
-        `"${node.object}" dia tsy sehatra natif — ${this.typeOf(obj)} no noraisina`
+        `tsy sehatra natif — ${this.typeOf(obj)} no noraisina`
       );
     }
     const native = (obj as BaikoNative).value as Record<string, unknown>;
@@ -441,6 +473,23 @@ export class Interpreter {
     if (typeof idx !== "number") throw new RuntimeError(`Index tokony ho isa fa ${this.typeOf(idx)} no noraisina`);
     this.checkElementType(val, (obj as BaikoList).elementType, node.object, this.nodePos(node));
     (obj as BaikoList).elements[idx as number] = val;
+  }
+
+  private async applyCallable(fn: BaikoValue, args: BaikoValue[]): Promise<BaikoValue> {
+    if (!fn || typeof fn !== "object" || (fn as BaikoCallable).kind !== "function") {
+      throw new RuntimeError(`Mitaky asa fa ${this.typeOf(fn)} no noraisina`);
+    }
+    const callable = fn as BaikoCallable;
+    if (args.length !== callable.params.length) {
+      throw new RuntimeError(`"${callable.name}" mitaky tohan-teny ${callable.params.length} fa ${args.length} no nomena`);
+    }
+    const fnEnv = new Environment(callable.closure);
+    for (let i = 0; i < callable.params.length; i++) {
+      this.checkType(args[i], callable.params[i].paramType, callable.params[i].name);
+      fnEnv.define(callable.params[i].name, args[i]);
+    }
+    const signal = await this.execBlock(callable.body, fnEnv);
+    return signal instanceof ReturnSignal ? signal.value : null;
   }
 
   private checkElementType(value: BaikoValue, elementType: BaikoType | LisitraType, listName: string, nodePos?: string): void {

@@ -275,7 +275,7 @@ describe("Parser — appel de méthode natif", () => {
     expect(node.type).toBe("PrintStatement");
     const mc = node.value;
     expect(mc.type).toBe("MemberCallExpression");
-    expect(mc.object).toBe("axios");
+    expect(mc.object).toEqual({ type: "Identifier", name: "axios" });
     expect(mc.method).toBe("get");
     expect(mc.args).toHaveLength(1);
   });
@@ -292,7 +292,7 @@ describe("Parser — accès de propriété native", () => {
     const node = first("asehoy math.pi;") as any;
     expect(node.type).toBe("PrintStatement");
     expect(node.value.type).toBe("MemberExpression");
-    expect(node.value.object).toBe("math");
+    expect(node.value.object).toEqual({ type: "Identifier", name: "math" });
     expect(node.value.property).toBe("pi");
   });
 
