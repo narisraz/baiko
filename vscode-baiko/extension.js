@@ -29,6 +29,7 @@ const KEYWORD_DOCS = {
   Soratra:       { label: "Soratra",       kind: vscode.CompletionItemKind.Class,    doc: "Karazana soratra (string)" },
   Marina:        { label: "Marina",        kind: vscode.CompletionItemKind.Class,    doc: "Karazana boolean (boolean)" },
   Mety:          { label: "Mety",          kind: vscode.CompletionItemKind.Class,    doc: "Karazana azo tsisy — Mety(Type)" },
+  Lisitra:       { label: "Lisitra",       kind: vscode.CompletionItemKind.Class,    doc: "Karazana lisitra — Lisitra(Type)" },
 };
 
 // ---- Scan du document : fonctions et variables ----

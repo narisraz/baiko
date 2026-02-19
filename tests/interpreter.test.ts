@@ -399,3 +399,92 @@ describe("Interpréteur — ampidiro (imports)", () => {
     expect(await run(src, resolver)).toEqual(["42"]);
   });
 });
+
+describe("Interpréteur — Lisitra (liste)", () => {
+  test("créer liste et lire par index", async () => {
+    const src = `
+      n: Lisitra(Isa) = [10, 20, 30];
+      asehoy n[0];
+      asehoy n[2];
+    `;
+    expect(await run(src)).toEqual(["10", "30"]);
+  });
+
+  test("ampidiro (push) et isany (length)", async () => {
+    const src = `
+      n: Lisitra(Isa) = [1, 2, 3];
+      n.ampidiro(4);
+      asehoy n.isany;
+    `;
+    expect(await run(src)).toEqual(["4"]);
+  });
+
+  test("écriture par index", async () => {
+    const src = `
+      n: Lisitra(Isa) = [10, 20, 30];
+      n[0] = 99;
+      asehoy n[0];
+    `;
+    expect(await run(src)).toEqual(["99"]);
+  });
+
+  test("asehoy liste → format crochet", async () => {
+    const src = `
+      n: Lisitra(Isa) = [1, 2, 3];
+      asehoy n;
+    `;
+    expect(await run(src)).toEqual(["[1, 2, 3]"]);
+  });
+
+  test("liste vide sans init", async () => {
+    const src = `
+      v: Lisitra(Soratra);
+      asehoy v.isany;
+    `;
+    expect(await run(src)).toEqual(["0"]);
+  });
+
+  test("liste imbriquée", async () => {
+    const src = `
+      m: Lisitra(Lisitra(Isa)) = [[1, 2], [3, 4]];
+      asehoy m[0][1];
+    `;
+    expect(await run(src)).toEqual(["2"]);
+  });
+
+  test("erreur index hors-bornes", async () => {
+    const src = `
+      n: Lisitra(Isa) = [1, 2];
+      asehoy n[5];
+    `;
+    await expect(run(src)).rejects.toThrow(RuntimeError);
+  });
+
+  test("type invalide → erreur si non-lisitra", async () => {
+    await expect(run('x: Lisitra(Isa) = "texte";')).rejects.toThrow("Tsy mety ny karazana");
+  });
+
+  test("élément de type invalide dans le littéral → erreur à la déclaration", async () => {
+    await expect(run('x: Lisitra(Isa) = [1, 2, "ddd"];')).rejects.toThrow("Tsy mety ny karazana");
+  });
+
+  test("liste imbriquée avec élément invalide → erreur", async () => {
+    await expect(run('m: Lisitra(Lisitra(Isa)) = [[1, 2], [3, "x"]];')).rejects.toThrow("Tsy mety ny karazana");
+  });
+
+  test("index assignment type invalide → erreur sur l'affectation", async () => {
+    const src = `
+      nombres: Lisitra(Isa) = [1, 2, 3];
+      nombres[0] = "asd";
+    `;
+    await expect(run(src)).rejects.toThrow("amin'ny lisitra");
+  });
+
+  test("ampidiro type invalide → erreur sur le push", async () => {
+    const src = `
+      nombres: Lisitra(Isa) = [1, 2, 3];
+      nombres.ampidiro("asd");
+    `;
+    await expect(run(src)).rejects.toThrow("amin'ny lisitra");
+  });
+});

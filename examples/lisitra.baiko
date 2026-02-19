@@ -1,0 +1,6 @@
+nombres: Lisitra(Isa) = [10, 20, 30];
+asehoy nombres[0];
+nombres.ampidiro(40);
+asehoy nombres.isany;
+nombres[0] = 99;
+asehoy nombres;

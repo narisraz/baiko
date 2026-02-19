@@ -182,3 +182,29 @@ describe("Generator — indentation", () => {
     );
   });
 });
+
+describe("Generator — Lisitra (liste)", () => {
+  test("Lisitra(Isa) → Array<number> annotation", () => {
+    expect(compile("x: Lisitra(Isa) = [];")).toBe("let /** @type {Array<number>} */ x = [];");
+  });
+
+  test("Lisitra(Soratra) → Array<string> annotation", () => {
+    expect(compile("x: Lisitra(Soratra) = [];")).toBe("let /** @type {Array<string>} */ x = [];");
+  });
+
+  test("Lisitra(Lisitra(Isa)) → Array<Array<number>> annotation", () => {
+    expect(compile("m: Lisitra(Lisitra(Isa)) = [];")).toBe("let /** @type {Array<Array<number>>} */ m = [];");
+  });
+
+  test("[1, 2] → [1, 2]", () => {
+    expect(compile("x: Lisitra(Isa) = [1, 2];")).toBe("let /** @type {Array<number>} */ x = [1, 2];");
+  });
+
+  test("x[0] → x[0]", () => {
+    expect(compile("asehoy x[0];")).toBe("console.log(x[0]);");
+  });
+
+  test("x[0] = 5; → x[0] = 5;", () => {
+    expect(compile("x[0] = 5;")).toBe("x[0] = 5;");
+  });
+});

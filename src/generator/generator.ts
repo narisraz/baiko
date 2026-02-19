@@ -13,6 +13,7 @@ import {
   ReturnStatement,
   PrintStatement,
   ExpressionStatement,
+  IndexAssignmentStatement,
   AssignmentExpression,
   BinaryExpression,
   CallExpression,
@@ -22,7 +23,12 @@ import {
   BooleanLiteral,
   TsisyLiteral,
   UnaryExpression,
+  ListLiteral,
+  IndexExpression,
+  BaikoType,
+  LisitraType,
   MetyType,
+  VarType,
 } from "../types/ast";
 import { Lexer } from "../lexer/lexer";
 import { Parser } from "../parser/parser";
@@ -45,24 +51,46 @@ export class Generator {
 
   private genStatement(stmt: Statement): string {
     switch (stmt.type) {
-      case "FunctionDeclaration":  return this.genFunction(stmt as FunctionDeclaration);
-      case "VariableDeclaration":  return this.genVarDecl(stmt as VariableDeclaration);
-      case "ImportStatement":      return this.genImport(stmt as ImportStatement);
-      case "IfStatement":          return this.genIf(stmt as IfStatement);
-      case "WhileStatement":       return this.genWhile(stmt as WhileStatement);
-      case "ReturnStatement":      return this.genReturn(stmt as ReturnStatement);
-      case "PrintStatement":       return this.genPrint(stmt as PrintStatement);
-      case "ExpressionStatement":  return this.pad() + this.genExpression((stmt as ExpressionStatement).expression) + ";";
+      case "FunctionDeclaration":       return this.genFunction(stmt as FunctionDeclaration);
+      case "VariableDeclaration":       return this.genVarDecl(stmt as VariableDeclaration);
+      case "ImportStatement":           return this.genImport(stmt as ImportStatement);
+      case "IfStatement":               return this.genIf(stmt as IfStatement);
+      case "WhileStatement":            return this.genWhile(stmt as WhileStatement);
+      case "ReturnStatement":           return this.genReturn(stmt as ReturnStatement);
+      case "PrintStatement":            return this.genPrint(stmt as PrintStatement);
+      case "ExpressionStatement":       return this.pad() + this.genExpression((stmt as ExpressionStatement).expression) + ";";
+      case "IndexAssignmentStatement": {
+        const ia = stmt as IndexAssignmentStatement;
+        return `${this.pad()}${ia.object}[${this.genExpression(ia.index)}] = ${this.genExpression(ia.value)};`;
+      }
     }
   }
 
   private genVarDecl(node: VariableDeclaration): string {
-    const isMety = typeof node.varType === "object" && (node.varType as MetyType).kind === "Mety";
-    const typeAnnotation = isMety ? `${(node.varType as MetyType).inner} | null` : node.varType;
+    const typeAnnotation = this.genTypeAnnotation(node.varType);
     if (node.value === null) {
       return `${this.pad()}let /** @type {${typeAnnotation}} */ ${node.name};`;
     }
     return `${this.pad()}let /** @type {${typeAnnotation}} */ ${node.name} = ${this.genExpression(node.value)};`;
+  }
+
+  private genTypeAnnotation(varType: VarType): string {
+    if (typeof varType === "string") return varType;
+    const obj = varType as MetyType | LisitraType;
+    if (obj.kind === "Mety") {
+      const inner = (obj as MetyType).inner;
+      if (typeof inner === "string") return `${inner} | null`;
+      return `${this.genListInnerAnnotation(inner)} | null`;
+    }
+    return `Array<${this.genListInnerAnnotation((obj as LisitraType).inner)}>`;
+  }
+
+  private genListInnerAnnotation(t: BaikoType | LisitraType): string {
+    if (typeof t === "string") {
+      const jsMap: Record<string, string> = { Isa: "number", Soratra: "string", Marina: "boolean" };
+      return jsMap[t] ?? t;
+    }
+    return `Array<${this.genListInnerAnnotation((t as LisitraType).inner)}>`;
   }
 
   private genImport(node: ImportStatement): string {
@@ -199,6 +227,14 @@ export class Generator {
         return "null";
       case "UnaryExpression":
         return `!(${this.genExpression((expr as UnaryExpression).operand)})`;
+      case "ListLiteral": {
+        const ll = expr as ListLiteral;
+        return `[${ll.elements.map((e) => this.genExpression(e)).join(", ")}]`;
+      }
+      case "IndexExpression": {
+        const ie = expr as IndexExpression;
+        return `${this.genExpression(ie.object)}[${this.genExpression(ie.index)}]`;
+      }
     }
   }
 

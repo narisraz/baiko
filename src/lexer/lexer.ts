@@ -41,6 +41,7 @@ export enum TokenType {
   Isa = "Isa",           // Number
   Soratra = "Soratra",   // String
   Marina = "Marina",     // Boolean
+  Lisitra = "Lisitra",   // List
 
   // Arithmetic operators
   Plus = "Plus",         // +
@@ -66,6 +67,8 @@ export enum TokenType {
   Comma = "Comma",           // ,
   Semicolon = "Semicolon",   // ;
   Dot = "Dot",               // .
+  LeftBracket = "LeftBracket",   // [
+  RightBracket = "RightBracket", // ]
 
   EOF = "EOF",
 }
@@ -93,6 +96,7 @@ const KEYWORDS: Record<string, TokenType> = {
   Isa:      TokenType.Isa,
   Soratra:  TokenType.Soratra,
   Marina:   TokenType.Marina,
+  Lisitra:  TokenType.Lisitra,
 };
 
 export interface Token {
@@ -163,6 +167,8 @@ export class Lexer {
       ",": TokenType.Comma,
       ";": TokenType.Semicolon,
       ".": TokenType.Dot,
+      "[": TokenType.LeftBracket,
+      "]": TokenType.RightBracket,
     };
     if (one[ch]) {
       this.advance();

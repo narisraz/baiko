@@ -9,6 +9,7 @@ export type NodeType =
   | "VariableDeclaration"
   | "ImportStatement"
   | "ExpressionStatement"
+  | "IndexAssignmentStatement"
   | "AssignmentExpression"
   | "BinaryExpression"
   | "CallExpression"
@@ -20,20 +21,30 @@ export type NodeType =
   | "UnaryExpression"
   | "MemberCallExpression"
   | "MemberExpression"
-  | "AwaitExpression";
+  | "AwaitExpression"
+  | "ListLiteral"
+  | "IndexExpression";
 
 export type BaikoType = "Isa" | "Soratra" | "Marina";
+
+/** Lisitra(Type) — type liste */
+export interface LisitraType {
+  kind: "Lisitra";
+  inner: BaikoType | LisitraType;
+}
 
 /** Mety(Type) — type optionnel (peut être tsisy) */
 export interface MetyType {
   kind: "Mety";
-  inner: BaikoType;
+  inner: BaikoType | LisitraType;
 }
 
-export type VarType = BaikoType | MetyType;
+export type VarType = BaikoType | MetyType | LisitraType;
 
 export interface BaseNode {
   type: NodeType;
+  line?: number;
+  col?: number;
 }
 
 // ---- Top-level ----
@@ -53,7 +64,8 @@ export type Statement =
   | WhileStatement
   | ReturnStatement
   | PrintStatement
-  | ExpressionStatement;
+  | ExpressionStatement
+  | IndexAssignmentStatement;
 
 /** ampidiro "file.baiko"; */
 export interface ImportStatement extends BaseNode {
@@ -119,6 +131,14 @@ export interface ExpressionStatement extends BaseNode {
   expression: Expression;
 }
 
+/** x[index] = expr; */
+export interface IndexAssignmentStatement extends BaseNode {
+  type: "IndexAssignmentStatement";
+  object: string;
+  index: Expression;
+  value: Expression;
+}
+
 // ---- Expressions ----
 
 export type Expression =
@@ -133,7 +153,9 @@ export type Expression =
   | NumericLiteral
   | StringLiteral
   | BooleanLiteral
-  | TsisyLiteral;
+  | TsisyLiteral
+  | ListLiteral
+  | IndexExpression;
 
 /** x = expr */
 export interface AssignmentExpression extends BaseNode {
@@ -205,4 +227,17 @@ export interface MemberExpression extends BaseNode {
   type: "MemberExpression";
   object: string;
   property: string;
+}
+
+/** [expr, expr, ...] — littéral liste */
+export interface ListLiteral extends BaseNode {
+  type: "ListLiteral";
+  elements: Expression[];
+}
+
+/** expr[index] — accès par index */
+export interface IndexExpression extends BaseNode {
+  type: "IndexExpression";
+  object: Expression;
+  index: Expression;
 }

@@ -10,6 +10,7 @@ import {
   ReturnStatement,
   PrintStatement,
   ExpressionStatement,
+  IndexAssignmentStatement,
   AssignmentExpression,
   BinaryExpression,
   UnaryExpression,
@@ -17,12 +18,15 @@ import {
   CallExpression,
   MemberCallExpression,
   MemberExpression,
+  ListLiteral,
+  IndexExpression,
   Identifier,
   NumericLiteral,
   StringLiteral,
   BooleanLiteral,
   Parameter,
   BaikoType,
+  LisitraType,
   MetyType,
   VarType,
 } from "../types/ast";
@@ -46,9 +50,16 @@ export interface BaikoNative {
   value: unknown;
 }
 
+/** Liste Baiko */
+export interface BaikoList {
+  kind: "list";
+  elements: BaikoValue[];
+  elementType: BaikoType | LisitraType;
+}
+
 // ---- Valeurs runtime ----
 
-export type BaikoValue = number | string | boolean | null | BaikoCallable | BaikoNative;
+export type BaikoValue = number | string | boolean | null | BaikoCallable | BaikoNative | BaikoList;
 
 export interface BaikoCallable {
   kind: "function";
@@ -131,14 +142,15 @@ export class Interpreter {
 
   private async execStmt(stmt: Statement, env: Environment): Promise<ReturnSignal | void> {
     switch (stmt.type) {
-      case "VariableDeclaration":  return this.execVarDecl(stmt as VariableDeclaration, env);
-      case "FunctionDeclaration":  return this.execFuncDecl(stmt as FunctionDeclaration, env);
-      case "ImportStatement":      return this.execImport(stmt as ImportStatement, env);
-      case "IfStatement":          return this.execIf(stmt as IfStatement, env);
-      case "WhileStatement":       return this.execWhile(stmt as WhileStatement, env);
-      case "ReturnStatement":      return this.execReturn(stmt as ReturnStatement, env);
-      case "PrintStatement":       return this.execPrint(stmt as PrintStatement, env);
-      case "ExpressionStatement":  await this.execExpr((stmt as ExpressionStatement).expression, env); return;
+      case "VariableDeclaration":       return this.execVarDecl(stmt as VariableDeclaration, env);
+      case "FunctionDeclaration":       return this.execFuncDecl(stmt as FunctionDeclaration, env);
+      case "ImportStatement":           return this.execImport(stmt as ImportStatement, env);
+      case "IfStatement":               return this.execIf(stmt as IfStatement, env);
+      case "WhileStatement":            return this.execWhile(stmt as WhileStatement, env);
+      case "ReturnStatement":           return this.execReturn(stmt as ReturnStatement, env);
+      case "PrintStatement":            return this.execPrint(stmt as PrintStatement, env);
+      case "ExpressionStatement":       await this.execExpr((stmt as ExpressionStatement).expression, env); return;
+      case "IndexAssignmentStatement":  return this.execIndexAssignment(stmt as IndexAssignmentStatement, env);
     }
   }
 
@@ -195,11 +207,20 @@ export class Interpreter {
 
   private async execVarDecl(node: VariableDeclaration, env: Environment): Promise<void> {
     if (node.value === null) {
-      env.define(node.name, null);
+      // Lisitra sans init → liste vide
+      if (typeof node.varType === "object" && (node.varType as LisitraType).kind === "Lisitra") {
+        env.define(node.name, { kind: "list", elements: [], elementType: (node.varType as LisitraType).inner });
+      } else {
+        env.define(node.name, null);
+      }
       return;
     }
     const value = await this.execExpr(node.value, env);
     this.checkType(value, node.varType, node.name);
+    // Propage le type d'élément déclaré sur la liste (pour vérification ultérieure)
+    if (this.isList(value) && typeof node.varType === "object" && (node.varType as LisitraType).kind === "Lisitra") {
+      (value as BaikoList).elementType = (node.varType as LisitraType).inner;
+    }
     env.define(node.name, value);
   }
 
@@ -257,6 +278,8 @@ export class Interpreter {
       case "CallExpression":       return this.execCall(expr as CallExpression, env);
       case "MemberCallExpression": return this.execMemberCall(expr as MemberCallExpression, env);
       case "MemberExpression":     return this.execMemberAccess(expr as MemberExpression, env);
+      case "ListLiteral":          return this.execListLiteral(expr as ListLiteral, env);
+      case "IndexExpression":      return this.execIndexExpr(expr as IndexExpression, env);
     }
   }
 
@@ -349,6 +372,17 @@ export class Interpreter {
 
   private async execMemberCall(node: MemberCallExpression, env: Environment): Promise<BaikoValue> {
     const obj = env.get(node.object);
+    // BaikoList methods
+    if (this.isList(obj)) {
+      if (node.method === "ampidiro") {
+        if (node.args.length !== 1) throw new RuntimeError('"ampidiro" mitaky tohan-teny iray');
+        const val = await this.execExpr(node.args[0], env);
+        this.checkElementType(val, (obj as BaikoList).elementType, node.object, this.nodePos(node));
+        (obj as BaikoList).elements.push(val);
+        return null;
+      }
+      throw new RuntimeError(`"${node.method}" tsy fantatry ny lisitra`);
+    }
     if (
       obj === null ||
       typeof obj !== "object" ||
@@ -370,6 +404,11 @@ export class Interpreter {
 
   private async execMemberAccess(node: MemberExpression, env: Environment): Promise<BaikoValue> {
     const obj = env.get(node.object);
+    // BaikoList properties
+    if (this.isList(obj)) {
+      if (node.property === "isany") return (obj as BaikoList).elements.length;
+      throw new RuntimeError(`"${node.property}" tsy fantatry ny lisitra`);
+    }
     if (obj === null || typeof obj !== "object" || (obj as BaikoNative).kind !== "native") {
       throw new RuntimeError(
         `"${node.object}" dia tsy sehatra natif — ${this.typeOf(obj)} no noraisina`
@@ -377,6 +416,57 @@ export class Interpreter {
     }
     const native = (obj as BaikoNative).value as Record<string, unknown>;
     return this.tobaiko(native[node.property]);
+  }
+
+  private async execListLiteral(node: ListLiteral, env: Environment): Promise<BaikoValue> {
+    const elements = await Promise.all(node.elements.map((e) => this.execExpr(e, env)));
+    return { kind: "list", elements, elementType: "Isa" } as BaikoList;
+  }
+
+  private async execIndexExpr(node: IndexExpression, env: Environment): Promise<BaikoValue> {
+    const obj = await this.execExpr(node.object, env);
+    const idx = await this.execExpr(node.index, env);
+    if (!this.isList(obj)) throw new RuntimeError(`Tsy lisitra — ${this.typeOf(obj)} no noraisina`);
+    if (typeof idx !== "number") throw new RuntimeError(`Index tokony ho isa fa ${this.typeOf(idx)} no noraisina`);
+    const val = (obj as BaikoList).elements[idx];
+    if (val === undefined) throw new RuntimeError(`Index ivelan'ny faritra: ${idx}`);
+    return val;
+  }
+
+  private async execIndexAssignment(node: IndexAssignmentStatement, env: Environment): Promise<void> {
+    const obj = env.get(node.object);
+    const idx = await this.execExpr(node.index, env);
+    const val = await this.execExpr(node.value, env);
+    if (!this.isList(obj)) throw new RuntimeError(`"${node.object}" tsy lisitra`);
+    if (typeof idx !== "number") throw new RuntimeError(`Index tokony ho isa fa ${this.typeOf(idx)} no noraisina`);
+    this.checkElementType(val, (obj as BaikoList).elementType, node.object, this.nodePos(node));
+    (obj as BaikoList).elements[idx as number] = val;
+  }
+
+  private checkElementType(value: BaikoValue, elementType: BaikoType | LisitraType, listName: string, nodePos?: string): void {
+    const suffix = nodePos ? ` ${nodePos}` : "";
+    if (typeof elementType === "string") {
+      const jsType: Record<BaikoType, string> = { Isa: "number", Soratra: "string", Marina: "boolean" };
+      if (this.typeOf(value) !== jsType[elementType as BaikoType]) {
+        throw new RuntimeError(
+          `Tsy mety ny karazana amin'ny lisitra "${listName}": niriny ${elementType} fa ${this.typeOf(value)} no noraisina${suffix}`
+        );
+      }
+    } else {
+      if (!this.isList(value)) {
+        throw new RuntimeError(
+          `Tsy mety ny karazana amin'ny lisitra "${listName}": niriny lisitra fa ${this.typeOf(value)} no noraisina${suffix}`
+        );
+      }
+      const inner = (elementType as LisitraType).inner;
+      for (let i = 0; i < (value as BaikoList).elements.length; i++) {
+        this.checkElementType((value as BaikoList).elements[i], inner, `${listName}[${i}]`, nodePos);
+      }
+    }
+  }
+
+  private nodePos(node: { line?: number; col?: number }): string | undefined {
+    return node.line != null ? `(andalana ${node.line}, toerana ${node.col})` : undefined;
   }
 
   private async execAwait(node: AwaitExpression, env: Environment): Promise<BaikoValue> {
@@ -442,9 +532,26 @@ export class Interpreter {
   private checkType(value: BaikoValue, expected: VarType, name: string): void {
     // Les valeurs natives passent la vérification de type (interop JS)
     if (typeof value === "object" && value !== null && (value as BaikoNative).kind === "native") return;
-    if (typeof expected === "object" && (expected as MetyType).kind === "Mety") {
-      if (value === null) return;
-      this.checkBaseType(value, (expected as MetyType).inner, name);
+    if (typeof expected === "object") {
+      const obj = expected as MetyType | LisitraType;
+      if (obj.kind === "Mety") {
+        if (value === null) return;
+        const inner = (obj as MetyType).inner;
+        if (typeof inner === "string") {
+          this.checkBaseType(value, inner as BaikoType, name);
+        } else if (!this.isList(value)) {
+          throw new RuntimeError(`Tsy mety ny karazana ho an'ny "${name}": niriny lisitra fa ${this.typeOf(value)} no noraisina`);
+        }
+      } else {
+        // LisitraType
+        if (!this.isList(value)) {
+          throw new RuntimeError(`Tsy mety ny karazana ho an'ny "${name}": niriny lisitra fa ${this.typeOf(value)} no noraisina`);
+        }
+        const inner = (obj as LisitraType).inner;
+        for (let i = 0; i < (value as BaikoList).elements.length; i++) {
+          this.checkElementType((value as BaikoList).elements[i], inner, `${name}[${i}]`);
+        }
+      }
     } else {
       if (value === null) {
         throw new RuntimeError(
@@ -466,9 +573,14 @@ export class Interpreter {
 
   private typeOf(value: BaikoValue): string {
     if (value === null) return "null";
+    if (this.isList(value)) return "lisitra";
     if (typeof value === "object" && (value as BaikoNative).kind === "native") return "natif";
     if (typeof value === "object") return "function";
     return typeof value;
+  }
+
+  private isList(v: BaikoValue): v is BaikoList {
+    return v !== null && typeof v === "object" && (v as BaikoList).kind === "list";
   }
 
   private isTruthy(value: BaikoValue): boolean {
@@ -482,6 +594,9 @@ export class Interpreter {
     if (value === null) return "tsisy";
     if (value === true)  return "marina";
     if (value === false) return "diso";
+    if (this.isList(value)) {
+      return "[" + (value as BaikoList).elements.map((e) => this.stringify(e)).join(", ") + "]";
+    }
     if (typeof value === "object" && (value as BaikoNative).kind === "native") {
       const v = (value as BaikoNative).value;
       try { return JSON.stringify(v); } catch { return String(v); }

@@ -42,7 +42,7 @@
     },
     "types": {
       "name": "storage.type.baiko",
-      "match": "\\b(Isa|Soratra|Marina|Mety)\\b"
+      "match": "\\b(Isa|Soratra|Marina|Mety|Lisitra)\\b"
     },
     "function-definition": {
       "comment": "asa nomAsa(...) — met en évidence le nom de la fonction",

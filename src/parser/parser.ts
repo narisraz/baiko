@@ -11,6 +11,7 @@ import {
   ReturnStatement,
   PrintStatement,
   ExpressionStatement,
+  IndexAssignmentStatement,
   AssignmentExpression,
   BinaryExpression,
   CallExpression,
@@ -23,13 +24,17 @@ import {
   MemberCallExpression,
   MemberExpression,
   AwaitExpression,
+  ListLiteral,
+  IndexExpression,
   BaikoType,
+  LisitraType,
   MetyType,
   VarType,
   ImportStatement,
 } from "../types/ast";
 
 const TYPE_TOKENS = new Set([TokenType.Isa, TokenType.Soratra, TokenType.Marina]);
+const VAR_TYPE_STARTERS = new Set([...TYPE_TOKENS, TokenType.Mety, TokenType.Lisitra]);
 
 const TOKEN_DESC: Partial<Record<TokenType, string>> = {
   [TokenType.Semicolon]:   '";" (famaranana ny tsipika)',
@@ -83,14 +88,26 @@ export class Parser {
     if (this.check(TokenType.Avereno) && this.tokens[this.pos + 1]?.type === TokenType.Raha) {
       return this.parseWhileStatement();
     }
-    // "identifier : Type =" ou "identifier : Mety(...)" → déclaration typée
+    // "identifier : Type =" ou "identifier : Mety(...)" ou "identifier : Lisitra(...)" → déclaration typée
     if (
       this.check(TokenType.Identifier) &&
       this.tokens[this.pos + 1]?.type === TokenType.Colon &&
-      (TYPE_TOKENS.has(this.tokens[this.pos + 2]?.type) ||
-        this.tokens[this.pos + 2]?.type === TokenType.Mety)
+      VAR_TYPE_STARTERS.has(this.tokens[this.pos + 2]?.type)
     ) {
       return this.parseVariableDeclaration();
+    }
+    // "identifier [ expr ] = expr ;" → index assignment
+    if (
+      this.check(TokenType.Identifier) &&
+      this.tokens[this.pos + 1]?.type === TokenType.LeftBracket
+    ) {
+      const saved = this.pos;
+      try {
+        const stmt = this.tryParseIndexAssignment();
+        if (stmt) return stmt;
+      } catch {
+        this.pos = saved;
+      }
     }
     switch (this.peek().type) {
       case TokenType.Asa:        return this.parseFunctionDeclaration();
@@ -127,8 +144,7 @@ export class Parser {
     if (
       this.check(TokenType.Identifier) &&
       this.tokens[this.pos + 1]?.type === TokenType.Colon &&
-      (TYPE_TOKENS.has(this.tokens[this.pos + 2]?.type) ||
-        this.tokens[this.pos + 2]?.type === TokenType.Mety)
+      VAR_TYPE_STARTERS.has(this.tokens[this.pos + 2]?.type)
     ) {
       const varDecl = this.parseVariableDeclaration();
       varDecl.exported = true;
@@ -150,7 +166,7 @@ export class Parser {
 
     let returnType: BaikoType | null = null;
     if (this.match(TokenType.Colon)) {
-      returnType = this.parseType();
+      returnType = this.parseBaseType();
     }
 
     this.expect(TokenType.Dia);
@@ -181,7 +197,7 @@ export class Parser {
     return { type: "VariableDeclaration", varType, name, value, exported: false };
   }
 
-  /** Parse un type de variable : BaikoType ou Mety(BaikoType) */
+  /** Parse un type de variable : BaikoType, Mety(BaikoType) ou Lisitra(Type) */
   private parseVarType(): VarType {
     if (this.check(TokenType.Mety)) {
       this.advance(); // consume Mety
@@ -200,14 +216,27 @@ export class Parser {
     do {
       const name = this.expect(TokenType.Identifier).value;
       this.expect(TokenType.Colon);
-      const paramType = this.parseType();
+      const paramType = this.parseBaseType();
       params.push({ type: "Parameter", name, paramType });
     } while (this.match(TokenType.Comma));
 
     return params;
   }
 
-  private parseType(): BaikoType {
+  /** Parse un type étendu : BaikoType ou Lisitra(Type) (récursif) */
+  private parseType(): BaikoType | LisitraType {
+    if (this.check(TokenType.Lisitra)) {
+      this.advance();
+      this.expect(TokenType.LeftParen);
+      const inner = this.parseType();
+      this.expect(TokenType.RightParen);
+      return { kind: "Lisitra", inner } as LisitraType;
+    }
+    return this.parseBaseType();
+  }
+
+  /** Parse un type de base : Isa | Soratra | Marina */
+  private parseBaseType(): BaikoType {
     const tok = this.peek();
     if (!TYPE_TOKENS.has(tok.type)) {
       throw new Error(`Tokony ho karazana (Isa, Soratra, Marina) fa "${tok.value}" no noraisina ${pos(tok.line, tok.column)}`);
@@ -406,15 +435,32 @@ export class Parser {
       return { type: "StringLiteral", value: tok.value } as StringLiteral;
     }
 
+    if (tok.type === TokenType.LeftBracket) {
+      this.advance();
+      const elements: Expression[] = [];
+      if (!this.check(TokenType.RightBracket)) {
+        do {
+          elements.push(this.parseExpression());
+        } while (this.match(TokenType.Comma));
+      }
+      this.expect(TokenType.RightBracket);
+      return { type: "ListLiteral", elements } as ListLiteral;
+    }
+
     if (tok.type === TokenType.Identifier) {
       this.advance();
       // Member access: obj.property  or  obj.method(args)
+      // Accept any token after dot as name (supports keyword method names like "ampidiro")
       if (this.match(TokenType.Dot)) {
-        const name = this.expect(TokenType.Identifier).value;
+        const nameTok = this.peek();
+        if (nameTok.type === TokenType.EOF) {
+          throw new Error(`Tokony ho anarana aorian'ny "." ${pos(nameTok.line, nameTok.column)}`);
+        }
+        const name = this.advance().value;
         if (this.match(TokenType.LeftParen)) {
           const args = this.parseArgs();
           this.expect(TokenType.RightParen);
-          return { type: "MemberCallExpression", object: tok.value, method: name, args } as MemberCallExpression;
+          return { type: "MemberCallExpression", object: tok.value, method: name, args, line: tok.line, col: tok.column } as MemberCallExpression;
         }
         return { type: "MemberExpression", object: tok.value, property: name } as MemberExpression;
       }
@@ -424,7 +470,15 @@ export class Parser {
         this.expect(TokenType.RightParen);
         return { type: "CallExpression", callee: tok.value, args } as CallExpression;
       }
-      return { type: "Identifier", name: tok.value } as Identifier;
+      // Index expression(s): name[expr][expr]...
+      let result: Expression = { type: "Identifier", name: tok.value } as Identifier;
+      while (this.check(TokenType.LeftBracket)) {
+        this.advance();
+        const index = this.parseExpression();
+        this.expect(TokenType.RightBracket);
+        result = { type: "IndexExpression", object: result, index } as IndexExpression;
+      }
+      return result;
     }
 
     if (tok.type === TokenType.True || tok.type === TokenType.False) {
@@ -445,6 +499,20 @@ export class Parser {
     }
 
     throw new Error(`Teny tsy andraina: "${tok.value}" ${pos(tok.line, tok.column)}`);
+  }
+
+  /** Tente de parser "IDENT [ expr ] = expr ;" → IndexAssignmentStatement ou null. */
+  private tryParseIndexAssignment(): IndexAssignmentStatement | null {
+    const saved = this.pos;
+    const identTok = this.peek(); // IDENT token (line/col)
+    const name = this.advance().value;
+    this.advance(); // [
+    const index = this.parseExpression();
+    if (!this.match(TokenType.RightBracket)) { this.pos = saved; return null; }
+    if (!this.match(TokenType.Equal)) { this.pos = saved; return null; }
+    const value = this.parseExpression();
+    this.expect(TokenType.Semicolon);
+    return { type: "IndexAssignmentStatement", object: name, index, value, line: identTok.line, col: identTok.column } as IndexAssignmentStatement;
   }
 
   private parseArgs(): Expression[] {

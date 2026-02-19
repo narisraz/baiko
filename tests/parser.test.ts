@@ -369,3 +369,50 @@ describe("Parser — erreurs", () => {
     expect(() => parse("asa f(x: Inconnu) dia farany")).toThrow("Tokony ho karazana");
   });
 });
+
+describe("Parser — Lisitra (liste)", () => {
+  test("Lisitra(Isa) → LisitraType", () => {
+    const node = first("x: Lisitra(Isa) = [];") as any;
+    expect(node.type).toBe("VariableDeclaration");
+    expect(node.varType).toEqual({ kind: "Lisitra", inner: "Isa" });
+  });
+
+  test("Lisitra(Lisitra(Isa)) → LisitraType imbriqué", () => {
+    const node = first("m: Lisitra(Lisitra(Isa)) = [];") as any;
+    expect(node.varType).toEqual({ kind: "Lisitra", inner: { kind: "Lisitra", inner: "Isa" } });
+  });
+
+  test("[1, 2, 3] → ListLiteral", () => {
+    const node = expr("[1, 2, 3];") as any;
+    expect(node.type).toBe("ListLiteral");
+    expect(node.elements).toHaveLength(3);
+    expect(node.elements[0].value).toBe(1);
+  });
+
+  test("liste vide [] → ListLiteral vide", () => {
+    const node = expr("[];") as any;
+    expect(node.type).toBe("ListLiteral");
+    expect(node.elements).toHaveLength(0);
+  });
+
+  test("x[0] → IndexExpression", () => {
+    const node = expr("x[0];") as any;
+    expect(node.type).toBe("IndexExpression");
+    expect(node.object.name).toBe("x");
+    expect(node.index.value).toBe(0);
+  });
+
+  test("x[0] = 5; → IndexAssignmentStatement", () => {
+    const node = first("x[0] = 5;") as any;
+    expect(node.type).toBe("IndexAssignmentStatement");
+    expect(node.object).toBe("x");
+    expect(node.index.value).toBe(0);
+    expect(node.value.value).toBe(5);
+  });
+
+  test("Lisitra sans init → VariableDeclaration valide", () => {
+    const node = first("v: Lisitra(Soratra);") as any;
+    expect(node.type).toBe("VariableDeclaration");
+    expect(node.value).toBeNull();
+  });
+});
