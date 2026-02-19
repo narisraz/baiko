@@ -10,9 +10,11 @@
   "activationEvents": ["onLanguage:baiko"],
   "scripts": {
     "build": "node build.mjs",
-    "vscode:prepublish": "node build.mjs"
+    "vscode:prepublish": "node build.mjs",
+    "package": "node build.mjs && npx vsce package --no-dependencies --allow-missing-repository --allow-star-activation"
   },
   "devDependencies": {
+    "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.25.0",
     "typescript": "^5.0.0"
   },
