@@ -125,6 +125,24 @@ function getInstalledPackages(searchDir) {
   return [...packages].sort();
 }
 
+// ---- Autocomplétion des membres de liste ----
+
+function buildListMemberCompletions() {
+  return [
+    { label: "ovay",     snippet: "ovay($0)",              kind: vscode.CompletionItemKind.Method,    detail: "Lisitra → Lisitra", doc: LIST_MEMBER_DOCS.ovay.doc },
+    { label: "tsingano", snippet: "tsingano($0)",          kind: vscode.CompletionItemKind.Method,    detail: "Lisitra → Lisitra", doc: LIST_MEMBER_DOCS.tsingano.doc },
+    { label: "atambaro", snippet: "atambaro($1, $0)",      kind: vscode.CompletionItemKind.Method,    detail: "Lisitra → soatoavina", doc: LIST_MEMBER_DOCS.atambaro.doc },
+    { label: "ampidiro", snippet: "ampidiro($0)",          kind: vscode.CompletionItemKind.Method,    detail: "Lisitra → tsisy", doc: LIST_MEMBER_DOCS.ampidiro.doc },
+    { label: "isany",    snippet: "isany",                 kind: vscode.CompletionItemKind.Property,  detail: "Isa", doc: LIST_MEMBER_DOCS.isany.doc },
+  ].map(({ label, snippet, kind, detail, doc }) => {
+    const item = new vscode.CompletionItem(label, kind);
+    item.insertText = new vscode.SnippetString(snippet);
+    item.detail = detail;
+    item.documentation = new vscode.MarkdownString(doc);
+    return item;
+  });
+}
+
 // ---- CompletionItemProvider ----
 
 function buildCompletions(document, position) {
@@ -156,7 +174,16 @@ function buildCompletions(document, position) {
     // Autocomplétion native : obj. → membres du .d.ts
     const dotMatch = beforeCursor.match(/([a-zA-Z_]\w*)\.(\w*)$/);
     if (dotMatch) {
-      const pkgName = getPackageForIdent(document, dotMatch[1]);
+      const objName = dotMatch[1];
+
+      // Méthodes de liste : si l'objet est une variable Lisitra
+      const { variables } = scanDocument(document);
+      if (variables.has(objName) && variables.get(objName).startsWith("Lisitra")) {
+        return buildListMemberCompletions();
+      }
+
+      // Membres d'un paquet natif
+      const pkgName = getPackageForIdent(document, objName);
       if (pkgName) {
         const dtsPath = resolveDtsPath(path.dirname(document.uri.fsPath), pkgName);
         if (dtsPath) {
