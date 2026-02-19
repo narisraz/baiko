@@ -91,13 +91,66 @@ function extractMembersFromDts(dtsPath) {
   return [...byName.entries()].map(([name, { kind, signature }]) => ({ name, kind, signature }));
 }
 
+/** Liste les paquets npm installés dans node_modules (remonte l'arborescence). */
+function getInstalledPackages(searchDir) {
+  const packages = new Set();
+  let dir = searchDir;
+  for (let i = 0; i < 8; i++) {
+    const nmDir = path.join(dir, "node_modules");
+    if (fs.existsSync(nmDir)) {
+      try {
+        for (const entry of fs.readdirSync(nmDir)) {
+          if (entry.startsWith(".") || entry.startsWith("_")) continue;
+          if (entry === "@types") continue;
+          if (entry.startsWith("@")) {
+            try {
+              for (const pkg of fs.readdirSync(path.join(nmDir, entry))) {
+                packages.add(`${entry}/${pkg}`);
+              }
+            } catch (_) {}
+          } else {
+            packages.add(entry);
+          }
+        }
+      } catch (_) {}
+      break;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return [...packages].sort();
+}
+
 // ---- CompletionItemProvider ----
 
 function buildCompletions(document, position) {
-  // Autocomplétion native : obj. → membres du .d.ts
   if (position) {
     const lineText = document.lineAt(position.line).text;
     const beforeCursor = lineText.slice(0, position.character);
+
+    // Autocomplétion du nom de paquet : ampidiro "package:<partial>
+    const pkgPrefixMatch = beforeCursor.match(/^\s*ampidiro\s+"package:([^"]*)$/);
+    if (pkgPrefixMatch) {
+      const partial = pkgPrefixMatch[1];
+      const partialStart = position.character - partial.length;
+      // Étendue du remplacement : jusqu'au prochain " ou fin de ligne
+      let endChar = position.character;
+      while (endChar < lineText.length && lineText[endChar] !== '"') endChar++;
+      const replaceRange = new vscode.Range(position.line, partialStart, position.line, endChar);
+
+      return getInstalledPackages(path.dirname(document.uri.fsPath))
+        .filter((pkg) => pkg.toLowerCase().startsWith(partial.toLowerCase()))
+        .map((pkg) => {
+          const item = new vscode.CompletionItem(pkg, vscode.CompletionItemKind.Module);
+          item.range = replaceRange;
+          item.detail = "paokaty npm";
+          item.documentation = new vscode.MarkdownString(`\`ampidiro "package:${pkg}"\``);
+          return item;
+        });
+    }
+
+    // Autocomplétion native : obj. → membres du .d.ts
     const dotMatch = beforeCursor.match(/([a-zA-Z_]\w*)\.(\w*)$/);
     if (dotMatch) {
       const pkgName = getPackageForIdent(document, dotMatch[1]);
@@ -176,6 +229,19 @@ function buildCompletions(document, position) {
     const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Variable);
     item.detail = `${name}: ${type}`;
     item.documentation = new vscode.MarkdownString(`**Variable** karazana \`${type}\``);
+    items.push(item);
+  }
+
+  // Paquets importés via ampidiro "package:xxx" → variable utilisable dans le code
+  const importRe = /^\s*ampidiro\s+"package:([^"]+)"/gm;
+  const text = document.getText();
+  let importMatch;
+  while ((importMatch = importRe.exec(text)) !== null) {
+    const pkgName = importMatch[1];
+    const varName = deriveVarName(pkgName);
+    const item = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Module);
+    item.detail = `package:${pkgName}`;
+    item.documentation = new vscode.MarkdownString(`Paokaty \`${pkgName}\` nampidirina`);
     items.push(item);
   }
 
