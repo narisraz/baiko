@@ -8,6 +8,7 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "run:baiko": "ts-node src/index.ts --run",
+    "interpret": "ts-node src/index.ts --interpret",
     "test": "jest",
     "test:watch": "jest --watch"
   },

@@ -1,0 +1,192 @@
+import { Lexer } from "../src/lexer/lexer";
+import { Parser } from "../src/parser/parser";
+import { Interpreter, RuntimeError } from "../src/interpreter/interpreter";
+
+function run(src: string, output: string[] = []): string[] {
+  const tokens = new Lexer(src).tokenize();
+  const ast = new Parser(tokens).parse();
+  const interpreter = new Interpreter();
+
+  const lines: string[] = [];
+  const spy = jest.spyOn(console, "log").mockImplementation((...args) => {
+    lines.push(args.join(" "));
+  });
+
+  interpreter.run(ast);
+  spy.mockRestore();
+  return lines;
+}
+
+function runThrows(src: string): string {
+  expect(() => run(src)).toThrow(RuntimeError);
+  try { run(src); } catch (e) { return (e as Error).message; }
+  return "";
+}
+
+describe("Interpréteur — littéraux et asehoy", () => {
+  test("nombre", () => {
+    expect(run("asehoy 42;")).toEqual(["42"]);
+  });
+
+  test("chaîne", () => {
+    expect(run('asehoy "Salama";')).toEqual(["Salama"]);
+  });
+
+  test("marina affiché en malagasy", () => {
+    expect(run("asehoy marina;")).toEqual(["marina"]);
+  });
+
+  test("diso affiché en malagasy", () => {
+    expect(run("asehoy diso;")).toEqual(["diso"]);
+  });
+});
+
+describe("Interpréteur — variables", () => {
+  test("déclaration et lecture", () => {
+    expect(run("x: Isa = 10; asehoy x;")).toEqual(["10"]);
+  });
+
+  test("réassignation", () => {
+    expect(run("x: Isa = 1; x = 99; asehoy x;")).toEqual(["99"]);
+  });
+
+  test("type invalide à la déclaration", () => {
+    expect(() => run('x: Isa = "texte";')).toThrow(RuntimeError);
+  });
+
+  test("variable non définie", () => {
+    expect(() => run("asehoy inconnu;")).toThrow(RuntimeError);
+  });
+});
+
+describe("Interpréteur — arithmétique", () => {
+  test("addition", () => {
+    expect(run("asehoy 3 + 4;")).toEqual(["7"]);
+  });
+
+  test("précédence * avant +", () => {
+    expect(run("asehoy 2 + 3 * 4;")).toEqual(["14"]);
+  });
+
+  test("concaténation de chaînes", () => {
+    expect(run('asehoy "Bon" + "jour";')).toEqual(["Bonjour"]);
+  });
+
+  test("division par zéro", () => {
+    expect(() => run("asehoy 1 / 0;")).toThrow(RuntimeError);
+  });
+});
+
+describe("Interpréteur — opérateurs logiques", () => {
+  test("tsy marina → diso", () => {
+    expect(run("asehoy tsy marina;")).toEqual(["diso"]);
+  });
+
+  test("marina ary marina → marina", () => {
+    expect(run("asehoy marina ary marina;")).toEqual(["marina"]);
+  });
+
+  test("marina ary diso → diso", () => {
+    expect(run("asehoy marina ary diso;")).toEqual(["diso"]);
+  });
+
+  test("diso na marina → marina", () => {
+    expect(run("asehoy diso na marina;")).toEqual(["marina"]);
+  });
+
+  test("court-circuit ary : ne lève pas d'erreur si gauche est faux", () => {
+    // Si ary n'est pas court-circuit, "inconnu" lèverait une erreur
+    expect(run("raha diso ary diso dia asehoy inconnu; farany")).toEqual([]);
+  });
+
+  test("court-circuit na : ne lève pas d'erreur si gauche est vrai", () => {
+    expect(run("raha marina na diso dia asehoy 1; farany")).toEqual(["1"]);
+  });
+});
+
+describe("Interpréteur — raha / ankoatra", () => {
+  test("branche vraie", () => {
+    expect(run('raha 1 > 0 dia asehoy "oui"; farany')).toEqual(["oui"]);
+  });
+
+  test("branche fausse avec else", () => {
+    expect(run('raha 1 > 5 dia asehoy "oui"; ankoatra dia asehoy "non"; farany')).toEqual(["non"]);
+  });
+
+  test("condition fausse sans else : rien", () => {
+    expect(run("raha diso dia asehoy 1; farany")).toEqual([]);
+  });
+});
+
+describe("Interpréteur — avereno raha", () => {
+  test("boucle 1 à 3", () => {
+    const src = `
+      i: Isa = 1;
+      avereno raha i <= 3 dia
+        asehoy i;
+        i = i + 1;
+      farany
+    `;
+    expect(run(src)).toEqual(["1", "2", "3"]);
+  });
+
+  test("boucle ne s'exécute pas si condition fausse", () => {
+    expect(run("avereno raha diso dia asehoy 1; farany")).toEqual([]);
+  });
+});
+
+describe("Interpréteur — fonctions", () => {
+  test("fonction simple", () => {
+    const src = `
+      asa ampio(a: Isa, b: Isa): Isa dia
+        mamoaka a + b;
+      farany
+      asehoy ampio(3, 4);
+    `;
+    expect(run(src)).toEqual(["7"]);
+  });
+
+  test("récursion — factorielle", () => {
+    const src = `
+      asa facto(n: Isa): Isa dia
+        raha n <= 1 dia
+          mamoaka 1;
+        farany
+        mamoaka n * facto(n - 1);
+      farany
+      asehoy facto(5);
+    `;
+    expect(run(src)).toEqual(["120"]);
+  });
+
+  test("mauvais nombre d'arguments", () => {
+    const src = `
+      asa f(x: Isa): Isa dia mamoaka x; farany
+      f(1, 2);
+    `;
+    expect(() => run(src)).toThrow(RuntimeError);
+  });
+
+  test("type invalide dans les arguments", () => {
+    const src = `
+      asa f(x: Isa): Isa dia mamoaka x; farany
+      f("texte");
+    `;
+    expect(() => run(src)).toThrow(RuntimeError);
+  });
+
+  test("closure — accès au scope parent", () => {
+    const src = `
+      x: Isa = 10;
+      asa addX(n: Isa): Isa dia
+        mamoaka n + x;
+      farany
+      asehoy addX(5);
+    `;
+    expect(run(src)).toEqual(["15"]);
+  });
+
+  test("appel sur un non-fonction", () => {
+    expect(() => run("x: Isa = 1; x(2);")).toThrow(RuntimeError);
+  });
+});

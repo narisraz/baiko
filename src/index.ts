@@ -4,40 +4,60 @@ import * as vm from "vm";
 import { Lexer } from "./lexer/lexer";
 import { Parser } from "./parser/parser";
 import { Generator } from "./generator/generator";
+import { Interpreter, RuntimeError } from "./interpreter/interpreter";
 
-function compile(source: string): string {
+function parse(source: string) {
   const tokens = new Lexer(source).tokenize();
-  const ast = new Parser(tokens).parse();
-  return new Generator().generate(ast);
+  return new Parser(tokens).parse();
 }
 
 const args = process.argv.slice(2);
 
+const USAGE = `
+Usage: baiko <mode> <file>
+
+Modes:
+  --compile     affiche le JavaScript généré  (défaut)
+  --run         compile puis exécute via Node
+  --interpret   exécute directement l'AST (interpréteur natif)
+`.trim();
+
 if (args.length === 0) {
-  console.error("Usage: baiko [--run] <file>");
-  console.error("  --run   compile et exécute le programme");
+  console.error(USAGE);
   process.exit(1);
 }
 
-const runFlag = args[0] === "--run";
-const filePath = path.resolve(runFlag ? args[1] : args[0]);
+const flag     = args[0].startsWith("--") ? args[0] : "--compile";
+const filePath = path.resolve(args[0].startsWith("--") ? args[1] : args[0]);
 
 if (!filePath) {
-  console.error("Erreur: fichier manquant");
+  console.error("Erreur: fichier manquant\n" + USAGE);
   process.exit(1);
 }
 
 const source = fs.readFileSync(filePath, "utf-8");
 
 try {
-  const js = compile(source);
+  const ast = parse(source);
 
-  if (runFlag) {
-    vm.runInNewContext(js, { console });
-  } else {
-    console.log(js);
+  switch (flag) {
+    case "--compile":
+    default: {
+      console.log(new Generator().generate(ast));
+      break;
+    }
+    case "--run": {
+      const js = new Generator().generate(ast);
+      vm.runInNewContext(js, { console });
+      break;
+    }
+    case "--interpret": {
+      new Interpreter().run(ast);
+      break;
+    }
   }
 } catch (err) {
-  console.error("Erreur:", (err as Error).message);
+  const prefix = err instanceof RuntimeError ? "Erreur runtime" : "Erreur";
+  console.error(`${prefix}: ${(err as Error).message}`);
   process.exit(1);
 }
