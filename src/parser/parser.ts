@@ -24,6 +24,28 @@ import {
 
 const TYPE_TOKENS = new Set([TokenType.Isa, TokenType.Soratra, TokenType.Marina]);
 
+const TOKEN_DESC: Partial<Record<TokenType, string>> = {
+  [TokenType.Semicolon]:   '";" (famaranana ny tsipika)',
+  [TokenType.Dia]:         '"dia" (fanombohana ny bloka)',
+  [TokenType.Farany]:      '"farany" (famaranana ny bloka)',
+  [TokenType.Ankoatra]:    '"ankoatra" (sampana hafa)',
+  [TokenType.Equal]:       '"=" (fandrafesana)',
+  [TokenType.EqualEqual]:  '"==" (fitoviana)',
+  [TokenType.Colon]:       '":" (mari-karazana)',
+  [TokenType.Comma]:       '"," (misaraka ny tohan-teny)',
+  [TokenType.LeftParen]:   '"(" (fanombohana ny tohan-teny)',
+  [TokenType.RightParen]:  '")" (famaranana ny tohan-teny)',
+  [TokenType.Identifier]:  'anarana (identifier)',
+  [TokenType.Isa]:         '"Isa" (karazana isa)',
+  [TokenType.Soratra]:     '"Soratra" (karazana soratra)',
+  [TokenType.Marina]:      '"Marina" (karazana boolean)',
+  [TokenType.Raha]:        '"raha"',
+};
+
+function pos(line: number, col: number): string {
+  return `(andalana ${line}, toerana ${col})`;
+}
+
 export class Parser {
   private tokens: Token[];
   private pos: number = 0;
@@ -112,7 +134,7 @@ export class Parser {
   private parseType(): BaikoType {
     const tok = this.peek();
     if (!TYPE_TOKENS.has(tok.type)) {
-      throw new Error(`Expected type (Isa, Soratra, Marina) at ${tok.line}:${tok.column}`);
+      throw new Error(`Tokony ho karazana (Isa, Soratra, Marina) fa "${tok.value}" no noraisina ${pos(tok.line, tok.column)}`);
     }
     this.advance();
     return tok.value as BaikoType;
@@ -318,7 +340,7 @@ export class Parser {
       return expr;
     }
 
-    throw new Error(`Unexpected token '${tok.value}' at ${tok.line}:${tok.column}`);
+    throw new Error(`Teny tsy andraina: "${tok.value}" ${pos(tok.line, tok.column)}`);
   }
 
   private parseArgs(): Expression[] {
@@ -342,7 +364,9 @@ export class Parser {
   private expect(type: TokenType): Token {
     if (!this.check(type)) {
       const tok = this.peek();
-      throw new Error(`Expected ${type} but got '${tok.value}' at ${tok.line}:${tok.column}`);
+      const expected = TOKEN_DESC[type] ?? `"${type}"`;
+      const got = tok.value ? `"${tok.value}"` : "fiafaran'ny rakitra";
+      throw new Error(`Nandiny ${got} fa nilaina ${expected} ${pos(tok.line, tok.column)}`);
     }
     return this.advance();
   }

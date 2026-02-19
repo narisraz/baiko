@@ -51,11 +51,11 @@ describe("Interpréteur — variables", () => {
   });
 
   test("type invalide à la déclaration", () => {
-    expect(() => run('x: Isa = "texte";')).toThrow(RuntimeError);
+    expect(() => run('x: Isa = "texte";')).toThrow("Tsy mety ny karazana");
   });
 
   test("variable non définie", () => {
-    expect(() => run("asehoy inconnu;")).toThrow(RuntimeError);
+    expect(() => run("asehoy inconnu;")).toThrow("Tsy fantatra ny");
   });
 });
 
@@ -73,7 +73,7 @@ describe("Interpréteur — arithmétique", () => {
   });
 
   test("division par zéro", () => {
-    expect(() => run("asehoy 1 / 0;")).toThrow(RuntimeError);
+    expect(() => run("asehoy 1 / 0;")).toThrow("Tsy azo zaraina");
   });
 });
 
@@ -164,7 +164,7 @@ describe("Interpréteur — fonctions", () => {
       asa f(x: Isa): Isa dia mamoaka x; farany
       f(1, 2);
     `;
-    expect(() => run(src)).toThrow(RuntimeError);
+    expect(() => run(src)).toThrow("mitaky tohan-teny");
   });
 
   test("type invalide dans les arguments", () => {
@@ -172,7 +172,7 @@ describe("Interpréteur — fonctions", () => {
       asa f(x: Isa): Isa dia mamoaka x; farany
       f("texte");
     `;
-    expect(() => run(src)).toThrow(RuntimeError);
+    expect(() => run(src)).toThrow("Tsy mety ny karazana");
   });
 
   test("closure — accès au scope parent", () => {
@@ -187,6 +187,6 @@ describe("Interpréteur — fonctions", () => {
   });
 
   test("appel sur un non-fonction", () => {
-    expect(() => run("x: Isa = 1; x(2);")).toThrow(RuntimeError);
+    expect(() => run("x: Isa = 1; x(2);")).toThrow("tsy asa");
   });
 });

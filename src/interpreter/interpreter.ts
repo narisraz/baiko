@@ -49,7 +49,7 @@ export class Environment {
   get(name: string): BaikoValue {
     if (this.store.has(name)) return this.store.get(name)!;
     if (this.parent) return this.parent.get(name);
-    throw new RuntimeError(`Variable non définie: "${name}"`);
+    throw new RuntimeError(`Tsy fantatra ny "${name}" — ilaina ny fanambarana azy aloha`);
   }
 
   define(name: string, value: BaikoValue): void {
@@ -59,7 +59,7 @@ export class Environment {
   assign(name: string, value: BaikoValue): void {
     if (this.store.has(name)) { this.store.set(name, value); return; }
     if (this.parent) { this.parent.assign(name, value); return; }
-    throw new RuntimeError(`Variable non définie: "${name}"`);
+    throw new RuntimeError(`Tsy azo ovaina ny "${name}" — tsy mbola nofaritana`);
   }
 }
 
@@ -181,11 +181,11 @@ export class Interpreter {
       case "+":
         if (typeof left === "number" && typeof right === "number") return left + right;
         if (typeof left === "string" || typeof right === "string") return String(left) + String(right);
-        throw new RuntimeError(`"+" invalide entre ${this.typeOf(left)} et ${this.typeOf(right)}`);
+        throw new RuntimeError(`Tsy azo ampiasaina ny "+" eo amin'ny ${this.typeOf(left)} sy ${this.typeOf(right)}`);
       case "-":  return this.numOp(left, right, "-",  (a, b) => a - b);
       case "*":  return this.numOp(left, right, "*",  (a, b) => a * b);
       case "/":
-        if (right === 0) throw new RuntimeError("Division par zéro");
+        if (right === 0) throw new RuntimeError('Tsy azo zaraina amin\'ny aotra (0)');
         return this.numOp(left, right, "/", (a, b) => a / b);
       case "==": return left === right;
       case "!=": return left !== right;
@@ -193,20 +193,20 @@ export class Interpreter {
       case "<=": return this.numOp(left, right, "<=", (a, b) => a <= b);
       case ">":  return this.numOp(left, right, ">",  (a, b) => a > b);
       case ">=": return this.numOp(left, right, ">=", (a, b) => a >= b);
-      default:   throw new RuntimeError(`Opérateur inconnu: "${node.operator}"`);
+      default:   throw new RuntimeError(`Mpanao tsy fantatra: "${node.operator}"`);
     }
   }
 
   private execCall(node: CallExpression, env: Environment): BaikoValue {
     const callee = env.get(node.callee);
     if (!callee || typeof callee !== "object" || (callee as BaikoCallable).kind !== "function") {
-      throw new RuntimeError(`"${node.callee}" n'est pas une fonction`);
+      throw new RuntimeError(`"${node.callee}" tsy asa — ${this.typeOf(callee)} no noraisina`);
     }
     const fn = callee as BaikoCallable;
 
     if (node.args.length !== fn.params.length) {
       throw new RuntimeError(
-        `"${fn.name}" attend ${fn.params.length} argument(s), ${node.args.length} fourni(s)`
+        `"${fn.name}" mitaky tohan-teny ${fn.params.length} fa ${node.args.length} no nomena`
       );
     }
 
@@ -231,7 +231,7 @@ export class Interpreter {
   ): BaikoValue {
     if (typeof left !== "number" || typeof right !== "number") {
       throw new RuntimeError(
-        `"${op}" nécessite des nombres, reçu ${this.typeOf(left)} et ${this.typeOf(right)}`
+        `"${op}" mitaky isa fa noraisina ${this.typeOf(left)} sy ${this.typeOf(right)}`
       );
     }
     return fn(left, right);
@@ -241,7 +241,7 @@ export class Interpreter {
     const jsType: Record<BaikoType, string> = { Isa: "number", Soratra: "string", Marina: "boolean" };
     if (this.typeOf(value) !== jsType[expected]) {
       throw new RuntimeError(
-        `Type invalide pour "${name}": attendu ${expected}, obtenu ${this.typeOf(value)}`
+        `Tsy mety ny karazana ho an'ny "${name}": niriny ${expected} fa ${this.typeOf(value)} no noraisina`
       );
     }
   }

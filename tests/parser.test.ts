@@ -235,6 +235,6 @@ describe("Parser — erreurs", () => {
   });
 
   test("type inconnu dans les paramètres", () => {
-    expect(() => parse("asa f(x: Inconnu) dia farany")).toThrow();
+    expect(() => parse("asa f(x: Inconnu) dia farany")).toThrow("Tokony ho karazana");
   });
 });

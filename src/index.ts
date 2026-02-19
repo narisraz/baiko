@@ -14,16 +14,16 @@ function parse(source: string) {
 const args = process.argv.slice(2);
 
 const USAGE = `
-Usage: baiko <mode> <file>
+Fampiasana: baiko <fomba> <rakitra>
 
-Modes:
-  --compile     affiche le JavaScript généré  (défaut)
-  --run         compile puis exécute via Node
-  --interpret   exécute directement l'AST (interpréteur natif)
+Fomba:
+  --compile     asehoy ny JavaScript vokarina  (voalohany)
+  --run         vakio sy ataovy amin'ny alalan'i Node
+  --interpret   ataovy mivantana ny AST (mpandrindra natif)
 `.trim();
 
 if (args.length === 0) {
-  console.error(USAGE);
+  console.error("Hadisoana: tsy nomena rakitra.\n\n" + USAGE);
   process.exit(1);
 }
 
@@ -31,7 +31,7 @@ const flag     = args[0].startsWith("--") ? args[0] : "--compile";
 const filePath = path.resolve(args[0].startsWith("--") ? args[1] : args[0]);
 
 if (!filePath) {
-  console.error("Erreur: fichier manquant\n" + USAGE);
+  console.error("Hadisoana: tsy nomena ny anarana ny rakitra.\n\n" + USAGE);
   process.exit(1);
 }
 
@@ -57,7 +57,7 @@ try {
     }
   }
 } catch (err) {
-  const prefix = err instanceof RuntimeError ? "Erreur runtime" : "Erreur";
+  const prefix = err instanceof RuntimeError ? "Hadisoana amin'ny fanatanterahana" : "Hadisoana";
   console.error(`${prefix}: ${(err as Error).message}`);
   process.exit(1);
 }

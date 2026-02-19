@@ -121,10 +121,10 @@ describe("Lexer — identifiant", () => {
 
 describe("Lexer — erreurs", () => {
   test("caractère inconnu", () => {
-    expect(() => tokenize("@")).toThrow("Unexpected character");
+    expect(() => tokenize("@")).toThrow("Litera tsy fantatra");
   });
 
   test("chaîne non fermée", () => {
-    expect(() => tokenize('"ouverte')).toThrow("Unterminated string");
+    expect(() => tokenize('"ouverte')).toThrow("Soratra tsy voafaritra");
   });
 });

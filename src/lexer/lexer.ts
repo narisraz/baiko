@@ -147,7 +147,8 @@ export class Lexer {
       return { type: one[ch], value: ch, line, column: col };
     }
 
-    throw new Error(`Unexpected character '${ch}' at ${line}:${col}`);
+    throw new Error(`Litera tsy fantatra '${ch}' (andalana ${line}, toerana ${col})`);
+
   }
 
   private readNumber(line: number, col: number): Token {
@@ -177,7 +178,8 @@ export class Lexer {
       }
     }
     if (this.pos >= this.source.length) {
-      throw new Error(`Unterminated string at ${line}:${col}`);
+      throw new Error(`Soratra tsy voafaritra: tsy misy '"' mamarana ny soratra natomboka (andalana ${line}, toerana ${col})`);
+
     }
     this.advance(); // skip closing "
     return { type: TokenType.String, value, line, column: col };
