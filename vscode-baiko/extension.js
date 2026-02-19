@@ -191,6 +191,22 @@ function buildSignatureHelp(document, position) {
 // ---- DefinitionProvider ----
 
 function buildDefinition(document, position) {
+  // ---- Import : clic sur le chemin "fichier.baiko" ----
+  const importRange = document.getWordRangeAtPosition(position, /"[^"]*"/);
+  if (importRange) {
+    const lineText = document.lineAt(position.line).text;
+    const importMatch = lineText.match(/^\s*ampidiro\s+"([^"]+)"/);
+    if (importMatch) {
+      const importPath = importMatch[1];
+      const resolved = path.resolve(path.dirname(document.uri.fsPath), importPath);
+      if (fs.existsSync(resolved)) {
+        const targetUri = vscode.Uri.file(resolved);
+        return new vscode.Location(targetUri, new vscode.Position(0, 0));
+      }
+    }
+  }
+
+  // ---- Fonctions et variables ----
   const range = document.getWordRangeAtPosition(position, /[a-zA-Z_]\w*/);
   if (!range) return null;
 
