@@ -38,11 +38,11 @@
     },
     "booleans": {
       "name": "constant.language.baiko",
-      "match": "\\b(marina|diso)\\b"
+      "match": "\\b(marina|diso|tsisy)\\b"
     },
     "types": {
       "name": "storage.type.baiko",
-      "match": "\\b(Isa|Soratra|Marina)\\b"
+      "match": "\\b(Isa|Soratra|Marina|Mety)\\b"
     },
     "function-definition": {
       "comment": "asa nomAsa(...) — met en évidence le nom de la fonction",

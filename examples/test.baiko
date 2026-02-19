@@ -1,7 +1,7 @@
 # Baiko - fiteny fanaovana programa amin'ny teny malagasy
 
 # Fanambarana sy fampisehoana
-isa: Isa = 42;
+isa: Mety(Isa) = tsisy;
 anarana: Soratra = "Rakoto";
 voky: Marina = marina;
 asehoy isa;
@@ -9,7 +9,7 @@ asehoy anarana;
 asehoy voky;
 
 # Fampitahana (if/else)
-raha isa > 10 ary tsy diso dia
+raha isa != tsisy ary isa > 10 ary tsy diso dia
   asehoy "lehibe";
 ankoatra dia
   asehoy "kely";

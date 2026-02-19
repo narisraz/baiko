@@ -17,6 +17,7 @@ import {
   StringLiteral,
   BooleanLiteral,
   Identifier,
+  MetyType,
 } from "../src/types/ast";
 
 function parse(src: string): Program {
@@ -61,6 +62,11 @@ describe("Parser — littéraux", () => {
     const node = expr("x;") as Identifier;
     expect(node.type).toBe("Identifier");
     expect(node.name).toBe("x");
+  });
+
+  test("tsisy", () => {
+    const node = expr("tsisy;");
+    expect(node.type).toBe("TsisyLiteral");
   });
 });
 
@@ -132,6 +138,35 @@ describe("Parser — déclaration de variable typée", () => {
     const node = first("voky: Marina = marina;") as VariableDeclaration;
     expect(node.varType).toBe("Marina");
     expect((node.value as BooleanLiteral).value).toBe(true);
+  });
+
+  test("x: Isa sans initialisation → erreur d'analyse", () => {
+    expect(() => parse("x: Isa;")).toThrow("karazana tsy azo tsisy");
+  });
+
+  test("x: Isa = tsisy → TsisyLiteral (parse ok, erreur à l'interprétation)", () => {
+    const node = first("x: Isa = tsisy;") as VariableDeclaration;
+    expect(node.value?.type).toBe("TsisyLiteral");
+  });
+
+  test("x: Mety(Isa) sans init → value null", () => {
+    const node = first("x: Mety(Isa);") as VariableDeclaration;
+    expect((node.varType as MetyType).kind).toBe("Mety");
+    expect((node.varType as MetyType).inner).toBe("Isa");
+    expect(node.value).toBeNull();
+  });
+
+  test("x: Mety(Soratra) = valeur → ok", () => {
+    const node = first('x: Mety(Soratra) = "Salama";') as VariableDeclaration;
+    expect((node.varType as MetyType).kind).toBe("Mety");
+    expect((node.varType as MetyType).inner).toBe("Soratra");
+    expect((node.value as StringLiteral).value).toBe("Salama");
+  });
+
+  test("x: Mety(Marina) = tsisy → TsisyLiteral", () => {
+    const node = first("x: Mety(Marina) = tsisy;") as VariableDeclaration;
+    expect((node.varType as MetyType).kind).toBe("Mety");
+    expect(node.value?.type).toBe("TsisyLiteral");
   });
 });
 

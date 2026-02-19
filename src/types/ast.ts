@@ -15,9 +15,18 @@ export type NodeType =
   | "NumericLiteral"
   | "StringLiteral"
   | "BooleanLiteral"
+  | "TsisyLiteral"
   | "UnaryExpression";
 
 export type BaikoType = "Isa" | "Soratra" | "Marina";
+
+/** Mety(Type) — type optionnel (peut être tsisy) */
+export interface MetyType {
+  kind: "Mety";
+  inner: BaikoType;
+}
+
+export type VarType = BaikoType | MetyType;
 
 export interface BaseNode {
   type: NodeType;
@@ -41,12 +50,12 @@ export type Statement =
   | PrintStatement
   | ExpressionStatement;
 
-/** Isa x = expr; */
+/** x: Isa = expr; ou x: Mety(Isa) [= expr]; */
 export interface VariableDeclaration extends BaseNode {
   type: "VariableDeclaration";
-  varType: BaikoType;
+  varType: VarType;
   name: string;
-  value: Expression;
+  value: Expression | null;
 }
 
 /** asa name(params): ReturnType dia ... farany */
@@ -106,7 +115,8 @@ export type Expression =
   | Identifier
   | NumericLiteral
   | StringLiteral
-  | BooleanLiteral;
+  | BooleanLiteral
+  | TsisyLiteral;
 
 /** x = expr */
 export interface AssignmentExpression extends BaseNode {
@@ -153,4 +163,8 @@ export interface StringLiteral extends BaseNode {
 export interface BooleanLiteral extends BaseNode {
   type: "BooleanLiteral";
   value: boolean;
+}
+
+export interface TsisyLiteral extends BaseNode {
+  type: "TsisyLiteral";
 }

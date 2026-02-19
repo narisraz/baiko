@@ -18,9 +18,11 @@ const KEYWORD_DOCS = {
   tsy:           { label: "tsy",           kind: vscode.CompletionItemKind.Operator, doc: "Tsy — mifanohitra (not)" },
   marina:        { label: "marina",        kind: vscode.CompletionItemKind.Constant, doc: "Soatoavina marina (true)" },
   diso:          { label: "diso",          kind: vscode.CompletionItemKind.Constant, doc: "Soatoavina diso (false)" },
+  tsisy:         { label: "tsisy",         kind: vscode.CompletionItemKind.Constant, doc: "Soatoavina tsisy (rien / non initialisé)" },
   Isa:           { label: "Isa",           kind: vscode.CompletionItemKind.Class,    doc: "Karazana isa (number)" },
   Soratra:       { label: "Soratra",       kind: vscode.CompletionItemKind.Class,    doc: "Karazana soratra (string)" },
   Marina:        { label: "Marina",        kind: vscode.CompletionItemKind.Class,    doc: "Karazana boolean (boolean)" },
+  Mety:          { label: "Mety",          kind: vscode.CompletionItemKind.Class,    doc: "Karazana azo tsisy — Mety(Type)" },
 };
 
 // ---- Scan du document : fonctions et variables ----
@@ -37,8 +39,8 @@ function scanDocument(document) {
     functions.set(m[1], { params: m[2].trim(), returnType: m[3] || null });
   }
 
-  // nom: Type = ...
-  const varRe = /\b([a-zA-Z_]\w*)\s*:\s*(Isa|Soratra|Marina)\b/g;
+  // nom: Type = ...  ou  nom: Mety(Type) = ...
+  const varRe = /\b([a-zA-Z_]\w*)\s*:\s*(?:Mety\s*\(\s*)?(Isa|Soratra|Marina)\b/g;
   while ((m = varRe.exec(text)) !== null) {
     if (!KEYWORD_DOCS[m[1]]) {
       variables.set(m[1], m[2]);
@@ -202,8 +204,8 @@ function buildDefinition(document, position) {
     return new vscode.Location(document.uri, pos);
   }
 
-  // Cherche "<word>: Type ="
-  const varRe = new RegExp(`\\b(${word})\\s*:\\s*(Isa|Soratra|Marina)\\b`, "g");
+  // Cherche "<word>: Type =" ou "<word>: Mety(Type) ="
+  const varRe = new RegExp(`\\b(${word})\\s*:\\s*(?:Mety\\s*\\(\\s*)?(Isa|Soratra|Marina)\\b`, "g");
   const varMatch = varRe.exec(text);
   if (varMatch) {
     const pos = document.positionAt(varMatch.index);
@@ -215,9 +217,15 @@ function buildDefinition(document, position) {
 
 // ---- Diagnostics ----
 
-function findIdentInDocument(document, name) {
+// Valeurs Baiko qui apparaissent dans les messages d'erreur mais ne correspondent
+// pas à une position utile dans le source (ex: "tsisy" dans "tsisy amin'ny >")
+const BAIKO_VALUE_KEYWORDS = new Set(["tsisy", "marina", "diso"]);
+
+function findTokenInDocument(document, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const re = new RegExp(`\\b${escaped}\\b`);
+  // Word boundaries pour les identifiants, recherche littérale pour les opérateurs
+  const isIdent = /^[a-zA-Z_]\w*$/.test(name);
+  const re = isIdent ? new RegExp(`\\b${escaped}\\b`) : new RegExp(escaped);
   for (let i = 0; i < document.lineCount; i++) {
     const col = document.lineAt(i).text.search(re);
     if (col !== -1) return { line: i, col };
@@ -240,14 +248,17 @@ function computeDiagnostics(document, collection) {
       while (wordEnd < lineText.length && /\w/.test(lineText[wordEnd])) wordEnd++;
       range = new vscode.Range(lineIdx, colIdx, lineIdx, Math.max(colIdx + 1, wordEnd));
     } else {
-      // Essaie de localiser l'identifiant cité dans le message
-      const nameMatch = err.message.match(/"([^"]+)"/);
+      // Essaie chaque terme entre guillemets dans le message (en ignorant les
+      // valeurs Baiko comme "tsisy" qui ne correspondent pas à une position utile)
+      const allQuoted = [...err.message.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+      const candidates = allQuoted.filter((t) => !BAIKO_VALUE_KEYWORDS.has(t));
       let found = false;
-      if (nameMatch) {
-        const pos = findIdentInDocument(document, nameMatch[1]);
+      for (const term of candidates) {
+        const pos = findTokenInDocument(document, term);
         if (pos) {
-          range = new vscode.Range(pos.line, pos.col, pos.line, pos.col + nameMatch[1].length);
+          range = new vscode.Range(pos.line, pos.col, pos.line, pos.col + term.length);
           found = true;
+          break;
         }
       }
       if (!found) {

@@ -18,8 +18,11 @@ import {
   NumericLiteral,
   StringLiteral,
   BooleanLiteral,
+  TsisyLiteral,
   UnaryExpression,
   BaikoType,
+  MetyType,
+  VarType,
 } from "../types/ast";
 
 const TYPE_TOKENS = new Set([TokenType.Isa, TokenType.Soratra, TokenType.Marina]);
@@ -39,6 +42,7 @@ const TOKEN_DESC: Partial<Record<TokenType, string>> = {
   [TokenType.Isa]:         '"Isa" (karazana isa)',
   [TokenType.Soratra]:     '"Soratra" (karazana soratra)',
   [TokenType.Marina]:      '"Marina" (karazana boolean)',
+  [TokenType.Mety]:        '"Mety" (karazana azo tsisy)',
   [TokenType.Raha]:        '"raha"',
 };
 
@@ -69,11 +73,12 @@ export class Parser {
     if (this.check(TokenType.Avereno) && this.tokens[this.pos + 1]?.type === TokenType.Raha) {
       return this.parseWhileStatement();
     }
-    // "identifier : Type =" → déclaration typée
+    // "identifier : Type =" ou "identifier : Mety(...)" → déclaration typée
     if (
       this.check(TokenType.Identifier) &&
       this.tokens[this.pos + 1]?.type === TokenType.Colon &&
-      TYPE_TOKENS.has(this.tokens[this.pos + 2]?.type)
+      (TYPE_TOKENS.has(this.tokens[this.pos + 2]?.type) ||
+        this.tokens[this.pos + 2]?.type === TokenType.Mety)
     ) {
       return this.parseVariableDeclaration();
     }
@@ -106,15 +111,37 @@ export class Parser {
     return { type: "FunctionDeclaration", name, params, returnType, body };
   }
 
-  /** x: Isa = expr; */
+  /** x: Isa = expr;  ou  x: Mety(Isa) [= expr]; */
   private parseVariableDeclaration(): VariableDeclaration {
     const name = this.expect(TokenType.Identifier).value;
     this.expect(TokenType.Colon);
-    const varType = this.parseType();
-    this.expect(TokenType.Equal);
-    const value = this.parseExpression();
+    const varType = this.parseVarType();
+    const isMety = typeof varType === "object";
+
+    let value: Expression | null = null;
+    if (this.match(TokenType.Equal)) {
+      value = this.parseExpression();
+    } else if (!isMety) {
+      const tok = this.peek();
+      throw new Error(
+        `"${name}" karazana tsy azo tsisy: tokony hanana soatoavina fiorenana ${pos(tok.line, tok.column)}`
+      );
+    }
+
     this.expect(TokenType.Semicolon);
     return { type: "VariableDeclaration", varType, name, value };
+  }
+
+  /** Parse un type de variable : BaikoType ou Mety(BaikoType) */
+  private parseVarType(): VarType {
+    if (this.check(TokenType.Mety)) {
+      this.advance(); // consume Mety
+      this.expect(TokenType.LeftParen);
+      const inner = this.parseType();
+      this.expect(TokenType.RightParen);
+      return { kind: "Mety", inner } as MetyType;
+    }
+    return this.parseType();
   }
 
   private parseParams(): Parameter[] {
@@ -331,6 +358,11 @@ export class Parser {
     if (tok.type === TokenType.True || tok.type === TokenType.False) {
       this.advance();
       return { type: "BooleanLiteral", value: tok.type === TokenType.True } as BooleanLiteral;
+    }
+
+    if (tok.type === TokenType.Tsisy) {
+      this.advance();
+      return { type: "TsisyLiteral" } as TsisyLiteral;
     }
 
     if (tok.type === TokenType.LeftParen) {

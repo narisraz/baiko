@@ -63,6 +63,8 @@ describe("Lexer — mots-clés", () => {
     ["Isa",      TokenType.Isa],
     ["Soratra",  TokenType.Soratra],
     ["Marina",   TokenType.Marina],
+    ["tsisy",    TokenType.Tsisy],
+    ["Mety",     TokenType.Mety],
   ];
 
   test.each(cases)('"%s" → %s', (src, expected) => {

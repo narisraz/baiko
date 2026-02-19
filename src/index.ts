@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as vm from "vm";
 import { Lexer } from "./lexer/lexer";
 import { Parser } from "./parser/parser";
 import { Generator } from "./generator/generator";
@@ -18,8 +17,8 @@ Fampiasana: baiko <fomba> <rakitra>
 
 Fomba:
   --compile     asehoy ny JavaScript vokarina  (voalohany)
-  --run         vakio sy ataovy amin'ny alalan'i Node
-  --interpret   ataovy mivantana ny AST (mpandrindra natif)
+  --run         ataovy mivantana ny AST (mpandrindra natif)
+  --interpret   toy ny --run (mijanona ho fanampiny)
 `.trim();
 
 if (args.length === 0) {
@@ -46,11 +45,7 @@ try {
       console.log(new Generator().generate(ast));
       break;
     }
-    case "--run": {
-      const js = new Generator().generate(ast);
-      vm.runInNewContext(js, { console });
-      break;
-    }
+    case "--run":
     case "--interpret": {
       new Interpreter().run(ast);
       break;

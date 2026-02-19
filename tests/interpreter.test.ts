@@ -57,6 +57,80 @@ describe("Interpréteur — variables", () => {
   test("variable non définie", () => {
     expect(() => run("asehoy inconnu;")).toThrow("Tsy fantatra ny");
   });
+
+  test("déclaration Mety sans valeur → tsisy", () => {
+    expect(run("x: Mety(Isa); asehoy x;")).toEqual(["tsisy"]);
+  });
+
+  test("déclaration Mety avec tsisy explicite → tsisy", () => {
+    expect(run("x: Mety(Isa) = tsisy; asehoy x;")).toEqual(["tsisy"]);
+  });
+
+  test("déclaration Mety sans valeur puis réassignation", () => {
+    expect(run("x: Mety(Isa); x = 42; asehoy x;")).toEqual(["42"]);
+  });
+
+  test("comparaison avec tsisy (Mety)", () => {
+    expect(run("x: Mety(Isa); asehoy x == tsisy;")).toEqual(["marina"]);
+  });
+
+  test("déclaration non-Mety sans init → erreur", () => {
+    expect(() => run("x: Isa;")).toThrow("karazana tsy azo tsisy");
+  });
+
+  test("déclaration non-Mety avec tsisy → erreur de type", () => {
+    expect(() => run("x: Isa = tsisy;")).toThrow("Tsy mety ny karazana");
+  });
+
+  test("tsisy affiché en malagasy", () => {
+    expect(run("asehoy tsisy;")).toEqual(["tsisy"]);
+  });
+});
+
+describe("Interpréteur — tsisy strict (opérations interdites)", () => {
+  test("tsisy + nombre → erreur", () => {
+    expect(runThrows("x: Mety(Isa); asehoy x + 1;")).toMatch(/tsisy/);
+  });
+
+  test("nombre + tsisy → erreur", () => {
+    expect(runThrows("x: Mety(Isa); asehoy 1 + x;")).toMatch(/tsisy/);
+  });
+
+  test("tsisy - nombre → erreur", () => {
+    expect(runThrows("x: Mety(Isa); asehoy x - 1;")).toMatch(/tsisy/);
+  });
+
+  test("tsisy * nombre → erreur", () => {
+    expect(runThrows("x: Mety(Isa); asehoy x * 2;")).toMatch(/tsisy/);
+  });
+
+  test("tsisy / nombre → erreur", () => {
+    expect(runThrows("x: Mety(Isa); asehoy x / 2;")).toMatch(/tsisy/);
+  });
+
+  test("tsisy > nombre → erreur", () => {
+    expect(runThrows("x: Mety(Isa); asehoy x > 0;")).toMatch(/tsisy/);
+  });
+
+  test("tsisy ary marina → erreur", () => {
+    expect(runThrows("x: Mety(Marina); asehoy x ary marina;")).toMatch(/tsisy/);
+  });
+
+  test("tsisy na marina → erreur", () => {
+    expect(runThrows("x: Mety(Marina); asehoy x na marina;")).toMatch(/tsisy/);
+  });
+
+  test("tsy tsisy → erreur", () => {
+    expect(runThrows("x: Mety(Marina); asehoy tsy x;")).toMatch(/tsisy/);
+  });
+
+  test("tsisy == tsisy → autorisé", () => {
+    expect(run("asehoy tsisy == tsisy;")).toEqual(["marina"]);
+  });
+
+  test("tsisy != 5 → autorisé", () => {
+    expect(run("x: Mety(Isa); asehoy x != 5;")).toEqual(["marina"]);
+  });
 });
 
 describe("Interpréteur — arithmétique", () => {

@@ -19,6 +19,8 @@ import {
   BooleanLiteral,
   Parameter,
   BaikoType,
+  MetyType,
+  VarType,
 } from "../types/ast";
 
 // ---- Valeurs runtime ----
@@ -110,6 +112,11 @@ export class Interpreter {
   }
 
   private execVarDecl(node: VariableDeclaration, env: Environment): void {
+    if (node.value === null) {
+      // Parser enforces this only happens for Mety types
+      env.define(node.name, null);
+      return;
+    }
     const value = this.execExpr(node.value, env);
     this.checkType(value, node.varType, node.name);
     env.define(node.name, value);
@@ -156,10 +163,15 @@ export class Interpreter {
       case "NumericLiteral":       return (expr as NumericLiteral).value;
       case "StringLiteral":        return (expr as StringLiteral).value;
       case "BooleanLiteral":       return (expr as BooleanLiteral).value;
+      case "TsisyLiteral":         return null;
       case "Identifier":           return env.get((expr as Identifier).name);
       case "AssignmentExpression": return this.execAssign(expr as AssignmentExpression, env);
       case "BinaryExpression":     return this.execBinary(expr as BinaryExpression, env);
-      case "UnaryExpression":      return !this.isTruthy(this.execExpr((expr as UnaryExpression).operand, env));
+      case "UnaryExpression": {
+        const operandVal = this.execExpr((expr as UnaryExpression).operand, env);
+        this.noTsisy(operandVal, "tsy");
+        return !this.isTruthy(operandVal);
+      }
       case "CallExpression":       return this.execCall(expr as CallExpression, env);
     }
   }
@@ -171,16 +183,32 @@ export class Interpreter {
   }
 
   private execBinary(node: BinaryExpression, env: Environment): BaikoValue {
-    // Court-circuit pour les opérateurs logiques
+    // Court-circuit pour les opérateurs logiques — tsisy interdit dans les deux branches
     if (node.operator === "ary") {
-      return this.isTruthy(this.execExpr(node.left, env)) && this.isTruthy(this.execExpr(node.right, env));
+      const left = this.execExpr(node.left, env);
+      this.noTsisy(left, "ary");
+      if (!this.isTruthy(left)) return false;
+      const right = this.execExpr(node.right, env);
+      this.noTsisy(right, "ary");
+      return this.isTruthy(right);
     }
     if (node.operator === "na") {
-      return this.isTruthy(this.execExpr(node.left, env)) || this.isTruthy(this.execExpr(node.right, env));
+      const left = this.execExpr(node.left, env);
+      this.noTsisy(left, "na");
+      if (this.isTruthy(left)) return true;
+      const right = this.execExpr(node.right, env);
+      this.noTsisy(right, "na");
+      return this.isTruthy(right);
     }
 
     const left  = this.execExpr(node.left, env);
     const right = this.execExpr(node.right, env);
+
+    // == et != sont les seuls opérateurs autorisés avec tsisy
+    if (node.operator !== "==" && node.operator !== "!=") {
+      this.noTsisy(left,  node.operator);
+      this.noTsisy(right, node.operator);
+    }
 
     switch (node.operator) {
       case "+":
@@ -228,6 +256,12 @@ export class Interpreter {
 
   // ---- Utilitaires ----
 
+  private noTsisy(value: BaikoValue, op: string): void {
+    if (value === null) {
+      throw new RuntimeError(`Tsy azo ampiasaina ny "tsisy" amin'ny "${op}"`);
+    }
+  }
+
   private numOp(
     left: BaikoValue,
     right: BaikoValue,
@@ -242,7 +276,21 @@ export class Interpreter {
     return fn(left, right);
   }
 
-  private checkType(value: BaikoValue, expected: BaikoType, name: string): void {
+  private checkType(value: BaikoValue, expected: VarType, name: string): void {
+    if (typeof expected === "object" && (expected as MetyType).kind === "Mety") {
+      if (value === null) return; // tsisy is valid for Mety
+      this.checkBaseType(value, (expected as MetyType).inner, name);
+    } else {
+      if (value === null) {
+        throw new RuntimeError(
+          `Tsy mety ny karazana ho an'ny "${name}": niriny ${expected as BaikoType} fa tsisy no noraisina`
+        );
+      }
+      this.checkBaseType(value, expected as BaikoType, name);
+    }
+  }
+
+  private checkBaseType(value: BaikoValue, expected: BaikoType, name: string): void {
     const jsType: Record<BaikoType, string> = { Isa: "number", Soratra: "string", Marina: "boolean" };
     if (this.typeOf(value) !== jsType[expected]) {
       throw new RuntimeError(
@@ -265,7 +313,7 @@ export class Interpreter {
   }
 
   private stringify(value: BaikoValue): string {
-    if (value === null) return "hafa";
+    if (value === null) return "tsisy";
     if (value === true)  return "marina";
     if (value === false) return "diso";
     if (typeof value === "object") return `<asa ${(value as BaikoCallable).name}>`;

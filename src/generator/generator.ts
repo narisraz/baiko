@@ -16,7 +16,9 @@ import {
   NumericLiteral,
   StringLiteral,
   BooleanLiteral,
+  TsisyLiteral,
   UnaryExpression,
+  MetyType,
 } from "../types/ast";
 
 export class Generator {
@@ -41,7 +43,12 @@ export class Generator {
   }
 
   private genVarDecl(node: VariableDeclaration): string {
-    return `${this.pad()}let /** @type {${node.varType}} */ ${node.name} = ${this.genExpression(node.value)};`;
+    const isMety = typeof node.varType === "object" && (node.varType as MetyType).kind === "Mety";
+    const typeAnnotation = isMety ? `${(node.varType as MetyType).inner} | null` : node.varType;
+    if (node.value === null) {
+      return `${this.pad()}let /** @type {${typeAnnotation}} */ ${node.name};`;
+    }
+    return `${this.pad()}let /** @type {${typeAnnotation}} */ ${node.name} = ${this.genExpression(node.value)};`;
   }
 
   private genFunction(node: FunctionDeclaration): string {
@@ -114,6 +121,8 @@ export class Generator {
         return JSON.stringify((expr as StringLiteral).value);
       case "BooleanLiteral":
         return (expr as BooleanLiteral).value ? "true" : "false";
+      case "TsisyLiteral":
+        return "null";
       case "UnaryExpression":
         return `!(${this.genExpression((expr as UnaryExpression).operand)})`;
     }

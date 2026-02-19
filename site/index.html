@@ -79,9 +79,16 @@
 
     // ---- Lint (surlignage d'erreurs) ----
 
-    // Cherche la position d'un identifiant dans le code (0-based line/col)
-    function findIdentPos(code, name) {
-      const re = new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b");
+    // Valeurs Baiko qui apparaissent dans les messages d'erreur mais ne pointent
+    // pas vers une position utile (ex: "tsisy" dans "tsisy amin'ny >")
+    const BAIKO_VALUE_KEYWORDS = new Set(["tsisy", "marina", "diso"]);
+
+    // Cherche un token dans le code : word boundary pour les identifiants,
+    // recherche littérale pour les opérateurs (+, >, <=, …)
+    function findTokenPos(code, name) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const isIdent = /^[a-zA-Z_]\w*$/.test(name);
+      const re = new RegExp(isIdent ? "\\b" + escaped + "\\b" : escaped);
       const lines = code.split("\n");
       for (let i = 0; i < lines.length; i++) {
         const col = lines[i].search(re);
@@ -105,15 +112,18 @@
           from = CodeMirror.Pos(line, col);
           to   = CodeMirror.Pos(line, Math.max(col + 1, wordEnd));
         } else {
-          // Pas de position : cherche le premier identifiant entre guillemets dans le message
-          const nameMatch = err.message.match(/"([^"]+)"/);
+          // Essaie chaque terme entre guillemets (en ignorant les valeurs Baiko
+          // comme "tsisy" qui ne correspondent pas à une position utile)
+          const allQuoted = [...err.message.matchAll(/"([^"]+)"/g)].map(function(m) { return m[1]; });
+          const candidates = allQuoted.filter(function(t) { return !BAIKO_VALUE_KEYWORDS.has(t); });
           let found = false;
-          if (nameMatch) {
-            const pos = findIdentPos(code, nameMatch[1]);
+          for (const term of candidates) {
+            const pos = findTokenPos(code, term);
             if (pos) {
               from  = CodeMirror.Pos(pos.line, pos.col);
-              to    = CodeMirror.Pos(pos.line, pos.col + nameMatch[1].length);
+              to    = CodeMirror.Pos(pos.line, pos.col + term.length);
               found = true;
+              break;
             }
           }
           if (!found) {
@@ -133,7 +143,7 @@
     const BAIKO_KEYWORDS = [
       "asa", "raha", "ankoatra", "avereno raha", "mamoaka",
       "dia", "farany", "asehoy", "ary", "na", "tsy",
-      "marina", "diso", "Isa", "Soratra", "Marina",
+      "marina", "diso", "tsisy", "Isa", "Soratra", "Marina", "Mety",
     ];
 
     function baikoHint(cm) {
@@ -147,7 +157,7 @@
       const text = cm.getValue();
       const userDefined = new Set();
       const fnRe  = /\basa\s+([a-zA-Z_]\w*)\s*\(/g;
-      const varRe = /\b([a-zA-Z_]\w*)\s*:\s*(?:Isa|Soratra|Marina)\b/g;
+      const varRe = /\b([a-zA-Z_]\w*)\s*:\s*(?:Mety\s*\(\s*)?(?:Isa|Soratra|Marina)\b/g;
       let m;
       while ((m = fnRe.exec(text))  !== null) userDefined.add(m[1]);
       while ((m = varRe.exec(text)) !== null) userDefined.add(m[1]);
@@ -169,8 +179,8 @@
         { regex: /#.*/, token: "comment" },
         { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
         { regex: /\b(?:avereno raha|asa|raha|ankoatra|mamoaka|dia|farany|asehoy|ary|na|tsy)\b/, token: "keyword" },
-        { regex: /\b(?:marina|diso)\b/, token: "atom" },
-        { regex: /\b(?:Isa|Soratra|Marina)\b/, token: "variable-2" },
+        { regex: /\b(?:marina|diso|tsisy)\b/, token: "atom" },
+        { regex: /\b(?:Isa|Soratra|Marina|Mety)\b/, token: "variable-2" },
         { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },
         { regex: /[+\-*/<>=!]+/, token: "operator" },
         { regex: /[a-zA-Z_]\w*/, token: "variable" },

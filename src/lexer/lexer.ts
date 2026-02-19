@@ -18,6 +18,12 @@ export enum TokenType {
   True = "True",         // marina (vrai)
   False = "False",       // diso (faux)
 
+  // Null literal
+  Tsisy = "Tsisy",       // tsisy (rien / non initialisé)
+
+  // Nullable type wrapper
+  Mety = "Mety",         // Mety(Type) — type optionnel
+
   // Logical operators
   And = "And",           // ary (et)
   Or = "Or",             // na (ou)
@@ -66,6 +72,8 @@ const KEYWORDS: Record<string, TokenType> = {
   avereno:  TokenType.Avereno,  // used in "avereno raha" (while)
   marina:   TokenType.True,
   diso:     TokenType.False,
+  tsisy:    TokenType.Tsisy,
+  Mety:     TokenType.Mety,
   ary:      TokenType.And,
   na:       TokenType.Or,
   tsy:      TokenType.Not,

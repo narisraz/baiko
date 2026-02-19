@@ -20,6 +20,22 @@ describe("Generator — déclaration de variable typée", () => {
   test("voky: Marina", () => {
     expect(compile("voky: Marina = marina;")).toBe("let /** @type {Marina} */ voky = true;");
   });
+
+  test("x: Mety(Isa) sans init → let sans valeur avec annotation nullable", () => {
+    expect(compile("x: Mety(Isa);")).toBe("let /** @type {Isa | null} */ x;");
+  });
+
+  test("x: Mety(Isa) = tsisy → null avec annotation nullable", () => {
+    expect(compile("x: Mety(Isa) = tsisy;")).toBe("let /** @type {Isa | null} */ x = null;");
+  });
+
+  test("x: Mety(Soratra) = valeur → annotation nullable avec valeur", () => {
+    expect(compile('x: Mety(Soratra) = "Salama";')).toBe('let /** @type {Soratra | null} */ x = "Salama";');
+  });
+
+  test("x: Isa = tsisy → annotation non-nullable (parse ok, erreur interp)", () => {
+    expect(compile("x: Isa = tsisy;")).toBe("let /** @type {Isa} */ x = null;");
+  });
 });
 
 describe("Generator — littéraux", () => {
