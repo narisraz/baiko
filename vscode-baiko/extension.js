@@ -271,6 +271,16 @@ function buildCompletions(document, position) {
   return items;
 }
 
+// ---- Documentation des méthodes de liste ----
+
+const LIST_MEMBER_DOCS = {
+  ovay:     { signature: "(lisitra).ovay(asa(singa) : vokatra) : Lisitra",     doc: "Ovay ny lisitra — manova ny singa tsirairay amin'ny alàlan'ny asa nomena **(map)**" },
+  tsingano: { signature: "(lisitra).tsingano(asa(singa) : Marina) : Lisitra",  doc: "Tsingano ny lisitra — miaro ny singa mahafeno fepetra **(filter)**" },
+  atambaro: { signature: "(lisitra).atambaro(soatoavina, asa(acc, singa)) : soatoavina", doc: "Atambaro ny lisitra — manangona soatoavina iray **(reduce)**" },
+  ampidiro: { signature: "(lisitra).ampidiro(singa) : tsisy",                   doc: "Ampidiro singa vaovao eo amin'ny faran'ny lisitra **(push)**" },
+  isany:    { signature: "(lisitra).isany : Isa",                               doc: "Isan'ny singa ao amin'ny lisitra **(length)**" },
+};
+
 // ---- HoverProvider ----
 
 function buildHover(document, position) {
@@ -300,6 +310,19 @@ function buildHover(document, position) {
         new vscode.MarkdownString(`**\`${label}\`** — paokaty \`${pkgName}\``),
         range
       );
+    }
+  }
+
+  // Méthodes/propriétés de liste : n.ovay, n.tsingano, n.atambaro, n.ampidiro, n.isany
+  if (LIST_MEMBER_DOCS[word]) {
+    const lineText = document.lineAt(position.line).text;
+    const beforeWord = lineText.slice(0, range.start.character);
+    if (beforeWord.endsWith(".")) {
+      const meta = LIST_MEMBER_DOCS[word];
+      const md = new vscode.MarkdownString();
+      md.appendCodeblock(meta.signature, "baiko");
+      md.appendMarkdown(meta.doc);
+      return new vscode.Hover(md, range);
     }
   }
 
