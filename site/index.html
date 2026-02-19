@@ -9,8 +9,10 @@
   <!-- CodeMirror 5 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/hint/show-hint.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/mode/simple.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/addon/hint/show-hint.min.js"></script>
 </head>
 <body>
   <header>
@@ -73,6 +75,45 @@
       fizzbuzz: `# FizzBuzz\nn: Isa = 1;\navereno raha n <= 20 dia\n  raha n - (n / 15) * 15 == 0 dia\n    asehoy "FizzBuzz";\n  ankoatra dia\n    raha n - (n / 3) * 3 == 0 dia\n      asehoy "Fizz";\n    ankoatra dia\n      raha n - (n / 5) * 5 == 0 dia\n        asehoy "Buzz";\n      ankoatra dia\n        asehoy n;\n      farany\n    farany\n  farany\n  n = n + 1;\nfarany\n`,
     };
 
+    // ---- Autocomplete ----
+    const BAIKO_KEYWORDS = [
+      "asa", "raha", "ankoatra", "avereno raha", "mamoaka",
+      "dia", "farany", "asehoy", "ary", "na", "tsy",
+      "marina", "diso", "Isa", "Soratra", "Marina",
+    ];
+
+    function baikoHint(cm) {
+      const cursor = cm.getCursor();
+      const line = cm.getLine(cursor.line);
+
+      // Trouver le début du mot courant
+      let wordStart = cursor.ch;
+      while (wordStart > 0 && /\w/.test(line[wordStart - 1])) wordStart--;
+      const word = line.slice(wordStart, cursor.ch);
+      if (!word) return;
+
+      // Scanner le document pour les fonctions et variables définies par l'utilisateur
+      const text = cm.getValue();
+      const userDefined = new Set();
+      const fnRe  = /\basa\s+([a-zA-Z_]\w*)\s*\(/g;
+      const varRe = /\b([a-zA-Z_]\w*)\s*:\s*(?:Isa|Soratra|Marina)\b/g;
+      let match;
+      while ((match = fnRe.exec(text))  !== null) userDefined.add(match[1]);
+      while ((match = varRe.exec(text)) !== null) userDefined.add(match[1]);
+
+      const all = [...BAIKO_KEYWORDS, ...userDefined];
+      const completions = all.filter(k => k !== word && k.startsWith(word));
+      if (completions.length === 0) return;
+
+      return {
+        list: completions,
+        from: CodeMirror.Pos(cursor.line, wordStart),
+        to:   CodeMirror.Pos(cursor.line, cursor.ch),
+      };
+    }
+
+    CodeMirror.registerHelper("hint", "baiko", baikoHint);
+
     // ---- CodeMirror setup ----
     CodeMirror.defineSimpleMode("baiko", {
       start: [
@@ -98,7 +139,14 @@
       extraKeys: {
         "Ctrl-Enter": runCode,
         "Cmd-Enter": runCode,
+        "Ctrl-Space": (editor) => editor.showHint({ hint: baikoHint, completeSingle: false }),
       },
+    });
+
+    // Déclenchement automatique à la frappe d'une lettre
+    cm.on("inputRead", function(editor, change) {
+      if (!change.text[0] || !/[a-zA-Z_]/.test(change.text[0])) return;
+      editor.showHint({ hint: baikoHint, completeSingle: false });
     });
 
     // ---- Exemples ----
