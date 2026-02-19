@@ -2,26 +2,13 @@ import { Lexer } from "../../src/lexer/lexer";
 import { Parser } from "../../src/parser/parser";
 import { Interpreter } from "../../src/interpreter/interpreter";
 
-export function runBaiko(code: string): string {
-  const lines: string[] = [];
-  const interpreter = new Interpreter((value: string) => {
-    lines.push(value);
-  });
-  const lexer = new Lexer(code);
-  const tokens = lexer.tokenize();
-  const parser = new Parser(tokens);
-  const program = parser.parse();
-  interpreter.run(program);
-  return lines.join("\n");
-}
-
-export interface BaikoCheckError {
+export interface BaikoError {
   message: string;
-  line: number | null; // 1-based, null if unknown
-  col: number | null;  // 1-based, null if unknown
+  line: number | null; // 1-based
+  col: number | null;  // 1-based
 }
 
-export function checkBaiko(code: string): BaikoCheckError[] {
+export function checkBaiko(code: string): BaikoError[] {
   try {
     const tokens = new Lexer(code).tokenize();
     const program = new Parser(tokens).parse();

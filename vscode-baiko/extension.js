@@ -1,5 +1,6 @@
 "use strict";
 const vscode = require("vscode");
+const { checkBaiko } = require("./baiko-check.js");
 
 // ---- Documentation des mots-clés ----
 
@@ -212,9 +213,58 @@ function buildDefinition(document, position) {
   return null;
 }
 
+// ---- Diagnostics ----
+
+function findIdentInDocument(document, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`\\b${escaped}\\b`);
+  for (let i = 0; i < document.lineCount; i++) {
+    const col = document.lineAt(i).text.search(re);
+    if (col !== -1) return { line: i, col };
+  }
+  return null;
+}
+
+function computeDiagnostics(document, collection) {
+  if (document.languageId !== "baiko") return;
+
+  const errors = checkBaiko(document.getText());
+  const diags = errors.map((err) => {
+    let range;
+
+    if (err.line !== null && err.col !== null) {
+      const lineIdx = err.line - 1;
+      const colIdx  = err.col  - 1;
+      const lineText = document.lineAt(lineIdx).text;
+      let wordEnd = colIdx;
+      while (wordEnd < lineText.length && /\w/.test(lineText[wordEnd])) wordEnd++;
+      range = new vscode.Range(lineIdx, colIdx, lineIdx, Math.max(colIdx + 1, wordEnd));
+    } else {
+      // Essaie de localiser l'identifiant cité dans le message
+      const nameMatch = err.message.match(/"([^"]+)"/);
+      let found = false;
+      if (nameMatch) {
+        const pos = findIdentInDocument(document, nameMatch[1]);
+        if (pos) {
+          range = new vscode.Range(pos.line, pos.col, pos.line, pos.col + nameMatch[1].length);
+          found = true;
+        }
+      }
+      if (!found) {
+        range = document.lineAt(0).range;
+      }
+    }
+
+    return new vscode.Diagnostic(range, err.message, vscode.DiagnosticSeverity.Error);
+  });
+
+  collection.set(document.uri, diags);
+}
+
 // ---- Activation ----
 
 function activate(context) {
+  // Providers existants
   context.subscriptions.push(
     vscode.languages.registerCompletionItemProvider(
       "baiko",
@@ -243,6 +293,30 @@ function activate(context) {
       "baiko",
       { provideDefinition: (doc, pos) => buildDefinition(doc, pos) }
     )
+  );
+
+  // Diagnostics
+  const diagnosticCollection = vscode.languages.createDiagnosticCollection("baiko");
+  context.subscriptions.push(diagnosticCollection);
+
+  let debounceTimer;
+  function scheduleUpdate(document) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => computeDiagnostics(document, diagnosticCollection), 300);
+  }
+
+  // Analyse le fichier actif au démarrage
+  if (vscode.window.activeTextEditor) {
+    computeDiagnostics(vscode.window.activeTextEditor.document, diagnosticCollection);
+  }
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument((e) => scheduleUpdate(e.document)),
+    vscode.workspace.onDidOpenTextDocument((doc) => computeDiagnostics(doc, diagnosticCollection)),
+    vscode.workspace.onDidCloseTextDocument((doc) => diagnosticCollection.delete(doc.uri)),
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor) computeDiagnostics(editor.document, diagnosticCollection);
+    })
   );
 }
 

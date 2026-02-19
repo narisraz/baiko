@@ -8,6 +8,14 @@
   "categories": ["Programming Languages"],
   "main": "./extension.js",
   "activationEvents": ["onLanguage:baiko"],
+  "scripts": {
+    "build": "node build.mjs",
+    "vscode:prepublish": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.0.0"
+  },
   "contributes": {
     "languages": [
       {
