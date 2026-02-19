@@ -56,9 +56,68 @@ function scanDocument(document) {
   return { functions, variables };
 }
 
+// ---- Accès natif : extraction de membres pour l'autocomplétion ----
+
+/** Extrait tous les membres (méthodes et propriétés) uniques d'un fichier .d.ts. */
+function extractMembersFromDts(dtsPath) {
+  const byName = new Map(); // name → { kind, signature }
+  try {
+    const content = fs.readFileSync(dtsPath, "utf-8");
+    const lines = content.split("\n");
+    const memberRe = /^\s+(?:readonly\s+)?([a-zA-Z_$][a-zA-Z0-9_$]*)\??\s*[(<:]/;
+    const skipKw = /^(type|interface|class|export|import|declare|namespace|enum|const|let|var|abstract|static|public|private|protected|new|constructor)\s/;
+
+    for (const line of lines) {
+      const trimmed = line.trimStart();
+      if (!trimmed || trimmed.startsWith("*") || trimmed.startsWith("//") || trimmed.startsWith("/*")) continue;
+      if (line === trimmed) continue; // déclaration top-level, pas un membre
+      if (skipKw.test(trimmed)) continue;
+      const m = memberRe.exec(line);
+      if (!m) continue;
+      const name = m[1];
+      const isMethod = /^\s+(?:readonly\s+)?[a-zA-Z_$][a-zA-Z0-9_$]*\??\s*[(<]/.test(line);
+      const existing = byName.get(name);
+      if (!existing) {
+        byName.set(name, {
+          kind: isMethod ? vscode.CompletionItemKind.Method : vscode.CompletionItemKind.Property,
+          signature: trimmed,
+        });
+      } else if (isMethod && existing.kind !== vscode.CompletionItemKind.Method) {
+        // Priorité aux déclarations callable sur les propriétés string-literal (ex: pow: '^')
+        byName.set(name, { kind: vscode.CompletionItemKind.Method, signature: trimmed });
+      }
+    }
+  } catch (_) {}
+  return [...byName.entries()].map(([name, { kind, signature }]) => ({ name, kind, signature }));
+}
+
 // ---- CompletionItemProvider ----
 
-function buildCompletions(document) {
+function buildCompletions(document, position) {
+  // Autocomplétion native : obj. → membres du .d.ts
+  if (position) {
+    const lineText = document.lineAt(position.line).text;
+    const beforeCursor = lineText.slice(0, position.character);
+    const dotMatch = beforeCursor.match(/([a-zA-Z_]\w*)\.(\w*)$/);
+    if (dotMatch) {
+      const pkgName = getPackageForIdent(document, dotMatch[1]);
+      if (pkgName) {
+        const dtsPath = resolveDtsPath(path.dirname(document.uri.fsPath), pkgName);
+        if (dtsPath) {
+          return extractMembersFromDts(dtsPath).map(({ name, kind, signature }) => {
+            const item = new vscode.CompletionItem(name, kind);
+            item.detail = pkgName;
+            item.documentation = new vscode.MarkdownString().appendCodeblock(signature, "typescript");
+            if (kind === vscode.CompletionItemKind.Method) {
+              item.insertText = new vscode.SnippetString(`${name}($0)`);
+            }
+            return item;
+          });
+        }
+      }
+    }
+  }
+
   const items = [];
 
   // Mots-clés, types, booléens
@@ -495,7 +554,7 @@ function activate(context) {
   context.subscriptions.push(
     vscode.languages.registerCompletionItemProvider(
       "baiko",
-      { provideCompletionItems: (doc) => buildCompletions(doc) },
+      { provideCompletionItems: (doc, pos) => buildCompletions(doc, pos) },
       ".", ":", " "
     )
   );
