@@ -76,6 +76,11 @@ export class RuntimeError extends Error {
 
 export class Interpreter {
   private global = new Environment();
+  private readonly printFn: (s: string) => void;
+
+  constructor(printFn?: (s: string) => void) {
+    this.printFn = printFn ?? ((s) => console.log(s));
+  }
 
   run(program: Program): void {
     for (const stmt of program.body) {
@@ -141,7 +146,7 @@ export class Interpreter {
   }
 
   private execPrint(node: PrintStatement, env: Environment): void {
-    console.log(this.stringify(this.execExpr(node.value, env)));
+    this.printFn(this.stringify(this.execExpr(node.value, env)));
   }
 
   // ---- Expressions ----

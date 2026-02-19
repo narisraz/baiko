@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="mg">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Baiko — Fiteny Fanaovana Programa</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- CodeMirror 5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/theme/dracula.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1><span class="logo">🇲🇬</span> Baiko</h1>
+      <p class="tagline">Fiteny fanaovana programa amin'ny teny malagasy</p>
+    </div>
+  </header>
+
+  <main>
+    <aside class="examples-panel">
+      <h2>Ohatra</h2>
+      <ul id="example-list">
+        <li class="active" data-id="hello">Salama Baiko</li>
+        <li data-id="calc">Kajy isa</li>
+        <li data-id="cond">Raha / Ankoatra</li>
+        <li data-id="loop">Fitodiavana</li>
+        <li data-id="func">Asa</li>
+        <li data-id="fizzbuzz">FizzBuzz</li>
+      </ul>
+    </aside>
+
+    <section class="editor-panel">
+      <div class="editor-header">
+        <span class="filename">main.baiko</span>
+        <button id="run-btn">&#9654; Ampiasao</button>
+      </div>
+      <textarea id="editor"></textarea>
+    </section>
+
+    <section class="output-panel">
+      <div class="output-header">
+        <span>Vokatra</span>
+        <button id="clear-btn">Fafao</button>
+      </div>
+      <pre id="output"></pre>
+    </section>
+  </main>
+
+  <footer>
+    <a href="https://github.com/narisrazafimahatratra/baiko" target="_blank" rel="noopener">GitHub</a>
+    &nbsp;·&nbsp;
+    <a href="https://www.npmjs.com/package/baiko" target="_blank" rel="noopener">npm</a>
+  </footer>
+
+  <script src="dist/baiko.js"></script>
+  <script>
+    // ---- Exemples ----
+    const EXAMPLES = {
+      hello: `# Salama Baiko !\nasehoy "Salama, Baiko!";\nasehoy 2 + 2;\n`,
+
+      calc: `# Kajy tsotra\nx: Isa = 10;\ny: Isa = 32;\nvokatra: Isa = x + y;\nasehoy "Vokatra:";\nasehoy vokatra;\n`,
+
+      cond: `# Raha / Ankoatra\nisa: Isa = 42;\nraha isa > 10 dia\n  asehoy "Lehibe noho ny 10";\nankoatra dia\n  asehoy "Kely noho ny 10";\nfarany\n`,
+
+      loop: `# Fitodiavana (while)\nkaonty: Isa = 1;\navereno raha kaonty <= 5 dia\n  asehoy kaonty;\n  kaonty = kaonty + 1;\nfarany\n`,
+
+      func: `# Asa (fonksiona)\nasa ampio(a: Isa, b: Isa): Isa dia\n  mamoaka a + b;\nfarany\n\nasa tohaina(s: Soratra): Soratra dia\n  mamoaka s + " - vita!";\nfarany\n\nvokatra: Isa = ampio(10, 32);\nasehoy vokatra;\nasehoy tohaina("Salama");\n`,
+
+      fizzbuzz: `# FizzBuzz\nn: Isa = 1;\navereno raha n <= 20 dia\n  raha n - (n / 15) * 15 == 0 dia\n    asehoy "FizzBuzz";\n  ankoatra dia\n    raha n - (n / 3) * 3 == 0 dia\n      asehoy "Fizz";\n    ankoatra dia\n      raha n - (n / 5) * 5 == 0 dia\n        asehoy "Buzz";\n      ankoatra dia\n        asehoy n;\n      farany\n    farany\n  farany\n  n = n + 1;\nfarany\n`,
+    };
+
+    // ---- CodeMirror setup ----
+    CodeMirror.defineSimpleMode("baiko", {
+      start: [
+        { regex: /#.*/, token: "comment" },
+        { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
+        { regex: /\b(?:avereno raha|asa|raha|ankoatra|mamoaka|dia|farany|asehoy|ary|na|tsy)\b/, token: "keyword" },
+        { regex: /\b(?:marina|diso)\b/, token: "atom" },
+        { regex: /\b(?:Isa|Soratra|Marina)\b/, token: "variable-2" },
+        { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },
+        { regex: /[+\-*/<>=!]+/, token: "operator" },
+        { regex: /[a-zA-Z_]\w*/, token: "variable" },
+      ],
+      meta: { lineComment: "#" },
+    });
+
+    const cm = CodeMirror.fromTextArea(document.getElementById("editor"), {
+      mode: "baiko",
+      theme: "dracula",
+      lineNumbers: true,
+      tabSize: 2,
+      indentWithTabs: false,
+      autofocus: true,
+      extraKeys: {
+        "Ctrl-Enter": runCode,
+        "Cmd-Enter": runCode,
+      },
+    });
+
+    // ---- Exemples ----
+    const exampleList = document.getElementById("example-list");
+    exampleList.querySelectorAll("li").forEach((li) => {
+      li.addEventListener("click", () => {
+        exampleList.querySelector(".active")?.classList.remove("active");
+        li.classList.add("active");
+        cm.setValue(EXAMPLES[li.dataset.id]);
+        cm.focus();
+      });
+    });
+
+    // Load first example
+    cm.setValue(EXAMPLES.hello);
+
+    // ---- Run ----
+    const output = document.getElementById("output");
+
+    function runCode() {
+      const code = cm.getValue();
+      output.textContent = "";
+      output.className = "";
+      try {
+        const result = BaikoWeb.runBaiko(code);
+        output.textContent = result || "(tsy misy vokatra)";
+        output.classList.add("ok");
+      } catch (e) {
+        output.textContent = "⚠ " + e.message;
+        output.classList.add("err");
+      }
+    }
+
+    document.getElementById("run-btn").addEventListener("click", runCode);
+    document.getElementById("clear-btn").addEventListener("click", () => {
+      output.textContent = "";
+      output.className = "";
+    });
+  </script>
+</body>
+</html>
