@@ -71,8 +71,37 @@ export class Generator {
     const content = this.resolver(node.path);
     const tokens = new Lexer(content).tokenize();
     const program = new Parser(tokens).parse();
-    const lines = program.body.map((s) => this.genStatement(s)).join("\n");
-    return `// --- ampidiro "${node.path}" ---\n${lines}\n// --- farany "${node.path}" ---`;
+
+    // Collect exported names
+    const exportedNames: string[] = [];
+    for (const stmt of program.body) {
+      if (
+        (stmt.type === "FunctionDeclaration" || stmt.type === "VariableDeclaration") &&
+        (stmt as FunctionDeclaration | VariableDeclaration).exported
+      ) {
+        exportedNames.push((stmt as FunctionDeclaration | VariableDeclaration).name);
+      }
+    }
+
+    // Wrap the module in an IIFE to isolate private declarations
+    this.indent++;
+    const body = program.body.map((s) => this.genStatement(s)).join("\n");
+    this.indent--;
+    const returnLine = exportedNames.length > 0
+      ? `  return { ${exportedNames.join(", ")} };`
+      : "  return {};";
+    const destructure = exportedNames.length > 0
+      ? `const { ${exportedNames.join(", ")} } = `
+      : "";
+
+    return [
+      `// --- ampidiro "${node.path}" ---`,
+      `${destructure}(() => {`,
+      body,
+      returnLine,
+      `})();`,
+      `// --- farany "${node.path}" ---`,
+    ].join("\n");
   }
 
   private genFunction(node: FunctionDeclaration): string {

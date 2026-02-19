@@ -24,8 +24,9 @@ export enum TokenType {
   // Nullable type wrapper
   Mety = "Mety",         // Mety(Type) — type optionnel
 
-  // Import
+  // Import / export
   Ampidiro = "Ampidiro", // ampidiro "file.baiko" — importer un fichier
+  Avoaka   = "Avoaka",  // avoaka — marquer comme exporté
 
   // Logical operators
   And = "And",           // ary (et)
@@ -78,6 +79,7 @@ const KEYWORDS: Record<string, TokenType> = {
   tsisy:    TokenType.Tsisy,
   Mety:     TokenType.Mety,
   ampidiro: TokenType.Ampidiro,
+  avoaka:   TokenType.Avoaka,
   ary:      TokenType.And,
   na:       TokenType.Or,
   tsy:      TokenType.Not,

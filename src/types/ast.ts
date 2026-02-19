@@ -64,6 +64,7 @@ export interface VariableDeclaration extends BaseNode {
   varType: VarType;
   name: string;
   value: Expression | null;
+  exported: boolean;
 }
 
 /** asa name(params): ReturnType dia ... farany */
@@ -73,6 +74,7 @@ export interface FunctionDeclaration extends BaseNode {
   params: Parameter[];
   returnType: BaikoType | null;
   body: Statement[];
+  exported: boolean;
 }
 
 export interface Parameter extends BaseNode {

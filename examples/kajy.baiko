@@ -1,22 +1,22 @@
 # Librairie kajy — asa fanisana tsotra
 
-asa ampio(a: Isa, b: Isa): Isa dia
+avoaka asa ampio(a: Isa, b: Isa): Isa dia
   mamoaka a + b;
 farany
 
-asa esorina(a: Isa, b: Isa): Isa dia
+avoaka asa esorina(a: Isa, b: Isa): Isa dia
   mamoaka a - b;
 farany
 
-asa ampidiana(a: Isa, b: Isa): Isa dia
+avoaka asa ampidiana(a: Isa, b: Isa): Isa dia
   mamoaka a * b;
 farany
 
-asa zarana(a: Isa, b: Isa): Isa dia
+avoaka asa zarana(a: Isa, b: Isa): Isa dia
   mamoaka a / b;
 farany
 
-asa facto(n: Isa): Isa dia
+avoaka asa facto(n: Isa): Isa dia
   raha n <= 1 dia
     mamoaka 1;
   farany

@@ -267,11 +267,14 @@ describe("Interpréteur — fonctions", () => {
 
 describe("Interpréteur — ampidiro (imports)", () => {
   const mathLib = `
-    asa double(n: Isa): Isa dia
+    avoaka asa double(n: Isa): Isa dia
       mamoaka n * 2;
     farany
-    asa carre(n: Isa): Isa dia
+    avoaka asa carre(n: Isa): Isa dia
       mamoaka n * n;
+    farany
+    asa secret(): Isa dia
+      mamoaka 99;
     farany
   `;
 
@@ -314,5 +317,26 @@ describe("Interpréteur — ampidiro (imports)", () => {
   test("sans resolver → erreur", () => {
     expect(() => run('ampidiro "math.baiko";'))
       .toThrow("Tsy azo ampidirina");
+  });
+
+  test("déclaration non-avoaka reste privée", () => {
+    const src = `
+      ampidiro "math.baiko";
+      asehoy secret();
+    `;
+    expect(() => run(src, mockResolver)).toThrow("Tsy fantatra");
+  });
+
+  test("avoaka variable importée", () => {
+    const libWithVar = `avoaka x: Isa = 42;`;
+    const resolver: FileResolver = (p) => {
+      if (p === "const.baiko") return libWithVar;
+      throw new Error(`Rakitra tsy misy: ${p}`);
+    };
+    const src = `
+      ampidiro "const.baiko";
+      asehoy x;
+    `;
+    expect(run(src, resolver)).toEqual(["42"]);
   });
 });

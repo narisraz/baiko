@@ -45,6 +45,7 @@ const TOKEN_DESC: Partial<Record<TokenType, string>> = {
   [TokenType.Marina]:      '"Marina" (karazana boolean)',
   [TokenType.Mety]:        '"Mety" (karazana azo tsisy)',
   [TokenType.Raha]:        '"raha"',
+  [TokenType.Avoaka]:      '"avoaka" (fanambaran\'ny avoaka)',
 };
 
 function pos(line: number, col: number): string {
@@ -70,6 +71,10 @@ export class Parser {
   // ---- Statements ----
 
   private parseStatement(): Statement {
+    // avoaka asa ... ou avoaka identifier: ...
+    if (this.check(TokenType.Avoaka)) {
+      return this.parseExportedStatement();
+    }
     // "avereno raha" is the while keyword (compound)
     if (this.check(TokenType.Avereno) && this.tokens[this.pos + 1]?.type === TokenType.Raha) {
       return this.parseWhileStatement();
@@ -93,6 +98,30 @@ export class Parser {
     }
   }
 
+  /** avoaka asa ... ou avoaka identifier: ... */
+  private parseExportedStatement(): FunctionDeclaration | VariableDeclaration {
+    this.expect(TokenType.Avoaka);
+    if (this.check(TokenType.Asa)) {
+      const fn = this.parseFunctionDeclaration();
+      fn.exported = true;
+      return fn;
+    }
+    if (
+      this.check(TokenType.Identifier) &&
+      this.tokens[this.pos + 1]?.type === TokenType.Colon &&
+      (TYPE_TOKENS.has(this.tokens[this.pos + 2]?.type) ||
+        this.tokens[this.pos + 2]?.type === TokenType.Mety)
+    ) {
+      const varDecl = this.parseVariableDeclaration();
+      varDecl.exported = true;
+      return varDecl;
+    }
+    const tok = this.peek();
+    throw new Error(
+      `"avoaka" tokony hitohana "asa" na fanambarana karazana — "${tok.value}" no noraisina ${pos(tok.line, tok.column)}`
+    );
+  }
+
   /** asa name(param: Type, ...): ReturnType dia ... farany */
   private parseFunctionDeclaration(): FunctionDeclaration {
     this.expect(TokenType.Asa);
@@ -110,7 +139,7 @@ export class Parser {
     const body = this.parseBlock();
     this.expect(TokenType.Farany);
 
-    return { type: "FunctionDeclaration", name, params, returnType, body };
+    return { type: "FunctionDeclaration", name, params, returnType, body, exported: false };
   }
 
   /** x: Isa = expr;  ou  x: Mety(Isa) [= expr]; */
@@ -131,7 +160,7 @@ export class Parser {
     }
 
     this.expect(TokenType.Semicolon);
-    return { type: "VariableDeclaration", varType, name, value };
+    return { type: "VariableDeclaration", varType, name, value, exported: false };
   }
 
   /** Parse un type de variable : BaikoType ou Mety(BaikoType) */

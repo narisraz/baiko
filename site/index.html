@@ -142,7 +142,7 @@
     // ---- Autocomplete ----
     const BAIKO_KEYWORDS = [
       "asa", "raha", "ankoatra", "avereno raha", "mamoaka",
-      "dia", "farany", "asehoy", "ary", "na", "tsy", "ampidiro",
+      "dia", "farany", "asehoy", "ary", "na", "tsy", "ampidiro", "avoaka",
       "marina", "diso", "tsisy", "Isa", "Soratra", "Marina", "Mety",
     ];
 
@@ -178,7 +178,7 @@
       start: [
         { regex: /#.*/, token: "comment" },
         { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
-        { regex: /\b(?:avereno raha|asa|raha|ankoatra|mamoaka|dia|farany|asehoy|ary|na|tsy|ampidiro)\b/, token: "keyword" },
+        { regex: /\b(?:avereno raha|asa|raha|ankoatra|mamoaka|dia|farany|asehoy|ary|na|tsy|ampidiro|avoaka)\b/, token: "keyword" },
         { regex: /\b(?:marina|diso|tsisy)\b/, token: "atom" },
         { regex: /\b(?:Isa|Soratra|Marina|Mety)\b/, token: "variable-2" },
         { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },

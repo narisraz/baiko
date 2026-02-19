@@ -133,8 +133,22 @@ export class Interpreter {
     }
     const tokens = new Lexer(content).tokenize();
     const program = new Parser(tokens).parse();
+
+    // Exécute le module dans un environnement isolé
+    const moduleEnv = new Environment(null);
     for (const stmt of program.body) {
-      this.execStmt(stmt, env);
+      this.execStmt(stmt, moduleEnv);
+    }
+
+    // Exporte uniquement les déclarations marquées avoaka
+    for (const stmt of program.body) {
+      if (
+        (stmt.type === "FunctionDeclaration" || stmt.type === "VariableDeclaration") &&
+        (stmt as FunctionDeclaration | VariableDeclaration).exported
+      ) {
+        const name = (stmt as FunctionDeclaration | VariableDeclaration).name;
+        env.define(name, moduleEnv.get(name));
+      }
     }
   }
 

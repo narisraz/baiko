@@ -268,6 +268,32 @@ describe("Parser — ampidiro", () => {
   });
 });
 
+describe("Parser — avoaka", () => {
+  test("avoaka asa → exported: true", () => {
+    const node = first("avoaka asa f(n: Isa): Isa dia mamoaka n; farany") as any;
+    expect(node.type).toBe("FunctionDeclaration");
+    expect(node.name).toBe("f");
+    expect(node.exported).toBe(true);
+  });
+
+  test("asa sans avoaka → exported: false", () => {
+    const node = first("asa f(n: Isa): Isa dia mamoaka n; farany") as any;
+    expect(node.exported).toBe(false);
+  });
+
+  test("avoaka variable → exported: true", () => {
+    const node = first("avoaka x: Isa = 5;") as any;
+    expect(node.type).toBe("VariableDeclaration");
+    expect(node.name).toBe("x");
+    expect(node.exported).toBe(true);
+  });
+
+  test("variable sans avoaka → exported: false", () => {
+    const node = first("x: Isa = 5;") as any;
+    expect(node.exported).toBe(false);
+  });
+});
+
 describe("Parser — erreurs", () => {
   test("point-virgule manquant", () => {
     expect(() => parse("42")).toThrow();

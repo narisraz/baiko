@@ -8,6 +8,7 @@ const { checkBaiko } = require("./baiko-check.js");
 
 const KEYWORD_DOCS = {
   ampidiro:      { label: "ampidiro",      kind: vscode.CompletionItemKind.Keyword,  doc: "Ampidiro ny rakitra (import)" },
+  avoaka:        { label: "avoaka",        kind: vscode.CompletionItemKind.Keyword,  doc: "Avoaka — mampiseho ny fanambarana (export)" },
   asa:           { label: "asa",           kind: vscode.CompletionItemKind.Keyword,  doc: "Fanambarana asa (function)" },
   raha:          { label: "raha",          kind: vscode.CompletionItemKind.Keyword,  doc: "Fehezanteny raha (if)" },
   ankoatra:      { label: "ankoatra",      kind: vscode.CompletionItemKind.Keyword,  doc: "Sampana hafa (else)" },
