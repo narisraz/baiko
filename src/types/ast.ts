@@ -18,7 +18,9 @@ export type NodeType =
   | "BooleanLiteral"
   | "TsisyLiteral"
   | "UnaryExpression"
-  | "MemberCallExpression";
+  | "MemberCallExpression"
+  | "MemberExpression"
+  | "AwaitExpression";
 
 export type BaikoType = "Isa" | "Soratra" | "Marina";
 
@@ -76,6 +78,7 @@ export interface FunctionDeclaration extends BaseNode {
   returnType: BaikoType | null;
   body: Statement[];
   exported: boolean;
+  async: boolean;
 }
 
 export interface Parameter extends BaseNode {
@@ -122,8 +125,10 @@ export type Expression =
   | AssignmentExpression
   | BinaryExpression
   | UnaryExpression
+  | AwaitExpression
   | CallExpression
   | MemberCallExpression
+  | MemberExpression
   | Identifier
   | NumericLiteral
   | StringLiteral
@@ -181,10 +186,23 @@ export interface TsisyLiteral extends BaseNode {
   type: "TsisyLiteral";
 }
 
+/** miandry expr — attendre une promesse */
+export interface AwaitExpression extends BaseNode {
+  type: "AwaitExpression";
+  value: Expression;
+}
+
 /** pkg.method(args) — appel de méthode sur un objet natif */
 export interface MemberCallExpression extends BaseNode {
   type: "MemberCallExpression";
   object: string;
   method: string;
   args: Expression[];
+}
+
+/** pkg.property — accès de propriété sur un objet natif */
+export interface MemberExpression extends BaseNode {
+  type: "MemberExpression";
+  object: string;
+  property: string;
 }

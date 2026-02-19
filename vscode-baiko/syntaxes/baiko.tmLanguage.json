@@ -63,7 +63,7 @@
     },
     "keywords-other": {
       "name": "keyword.other.baiko",
-      "match": "\\b(asehoy|mamoaka|ary|na|tsy|ampidiro|avoaka)\\b"
+      "match": "\\b(asehoy|mamoaka|ary|na|tsy|miandry|ampidiro|avoaka|andrasana)\\b"
     },
     "function-call": {
       "comment": "nom suivi de ( — appel de fonction",

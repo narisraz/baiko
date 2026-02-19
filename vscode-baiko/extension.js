@@ -9,6 +9,8 @@ const { checkBaiko } = require("./baiko-check.js");
 const KEYWORD_DOCS = {
   ampidiro:      { label: "ampidiro",      kind: vscode.CompletionItemKind.Keyword,  doc: "Ampidiro ny rakitra (import)" },
   avoaka:        { label: "avoaka",        kind: vscode.CompletionItemKind.Keyword,  doc: "Avoaka — mampiseho ny fanambarana (export)" },
+  andrasana:     { label: "andrasana",     kind: vscode.CompletionItemKind.Keyword,  doc: "Andrasana — asa async (async function)" },
+  miandry:       { label: "miandry",       kind: vscode.CompletionItemKind.Keyword,  doc: "Miandry — miandry ny vokatra async (await)" },
   asa:           { label: "asa",           kind: vscode.CompletionItemKind.Keyword,  doc: "Fanambarana asa (function)" },
   raha:          { label: "raha",          kind: vscode.CompletionItemKind.Keyword,  doc: "Fehezanteny raha (if)" },
   ankoatra:      { label: "ankoatra",      kind: vscode.CompletionItemKind.Keyword,  doc: "Sampana hafa (else)" },
@@ -288,12 +290,12 @@ function findTokenInDocument(document, name) {
   return null;
 }
 
-function computeDiagnostics(document, collection) {
+async function computeDiagnostics(document, collection) {
   if (document.languageId !== "baiko") return;
 
   const dir = path.dirname(document.uri.fsPath);
   const resolver = (importPath) => fs.readFileSync(path.resolve(dir, importPath), "utf-8");
-  const errors = checkBaiko(document.getText(), resolver);
+  const errors = await checkBaiko(document.getText(), resolver);
   const diags = errors.map((err) => {
     let range;
 

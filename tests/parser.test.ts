@@ -18,6 +18,7 @@ import {
   BooleanLiteral,
   Identifier,
   MetyType,
+  AwaitExpression,
 } from "../src/types/ast";
 
 function parse(src: string): Program {
@@ -286,6 +287,23 @@ describe("Parser — appel de méthode natif", () => {
   });
 });
 
+describe("Parser — accès de propriété native", () => {
+  test("asehoy pkg.prop → MemberExpression", () => {
+    const node = first("asehoy math.pi;") as any;
+    expect(node.type).toBe("PrintStatement");
+    expect(node.value.type).toBe("MemberExpression");
+    expect(node.value.object).toBe("math");
+    expect(node.value.property).toBe("pi");
+  });
+
+  test("x: Mety(Isa) = pkg.prop", () => {
+    const node = first("x: Mety(Isa) = math.E;") as any;
+    expect(node.type).toBe("VariableDeclaration");
+    expect(node.value.type).toBe("MemberExpression");
+    expect(node.value.property).toBe("E");
+  });
+});
+
 describe("Parser — avoaka", () => {
   test("avoaka asa → exported: true", () => {
     const node = first("avoaka asa f(n: Isa): Isa dia mamoaka n; farany") as any;
@@ -309,6 +327,32 @@ describe("Parser — avoaka", () => {
   test("variable sans avoaka → exported: false", () => {
     const node = first("x: Isa = 5;") as any;
     expect(node.exported).toBe(false);
+  });
+});
+
+describe("Parser — andrasana / miandry", () => {
+  test("andrasana asa → async: true", () => {
+    const node = first("andrasana asa f(): Isa dia mamoaka 1; farany") as FunctionDeclaration;
+    expect(node.type).toBe("FunctionDeclaration");
+    expect(node.name).toBe("f");
+    expect(node.async).toBe(true);
+  });
+
+  test("asa sans andrasana → async: false", () => {
+    const node = first("asa f(): Isa dia mamoaka 1; farany") as FunctionDeclaration;
+    expect(node.async).toBe(false);
+  });
+
+  test("miandry expr → AwaitExpression", () => {
+    const node = expr("miandry f();") as AwaitExpression;
+    expect(node.type).toBe("AwaitExpression");
+    expect(node.value.type).toBe("CallExpression");
+  });
+
+  test("avoaka andrasana asa → exported: true, async: true", () => {
+    const node = first("avoaka andrasana asa f(): Isa dia mamoaka 1; farany") as FunctionDeclaration;
+    expect(node.exported).toBe(true);
+    expect(node.async).toBe(true);
   });
 });
 

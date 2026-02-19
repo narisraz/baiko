@@ -6,6 +6,8 @@ import {
   VariableDeclaration,
   ImportStatement,
   MemberCallExpression,
+  MemberExpression,
+  AwaitExpression,
   IfStatement,
   WhileStatement,
   ReturnStatement,
@@ -115,7 +117,8 @@ export class Generator {
 
   private genFunction(node: FunctionDeclaration): string {
     const params = node.params.map((p) => p.name).join(", ");
-    const header = `${this.pad()}function ${node.name}(${params}) {`;
+    const asyncKw = node.async ? "async " : "";
+    const header = `${this.pad()}${asyncKw}function ${node.name}(${params}) {`;
     this.indent++;
     const body = node.body.map((s) => this.genStatement(s)).join("\n");
     this.indent--;
@@ -180,6 +183,10 @@ export class Generator {
         const args = mc.args.map((a) => this.genExpression(a)).join(", ");
         return `${mc.object}.${mc.method}(${args})`;
       }
+      case "MemberExpression":
+        return `${(expr as MemberExpression).object}.${(expr as MemberExpression).property}`;
+      case "AwaitExpression":
+        return `await ${this.genExpression((expr as AwaitExpression).value)}`;
       case "Identifier":
         return (expr as Identifier).name;
       case "NumericLiteral":

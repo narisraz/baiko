@@ -1,0 +1,17 @@
+# Ohatra — fetch amin'ny node-fetch
+# Tsy maintsy manao: npm install node-fetch
+
+ampidiro "package:node-fetch";
+
+andrasana asa hankazo(url: Soratra): Soratra dia
+  res: Mety(Soratra) = miandry node_fetch(url);
+  data: Mety(Soratra) = miandry res.json();
+  mamoaka data;
+farany
+
+andrasana asa lehibe() dia
+  vokatra: Mety(Soratra) = miandry hankazo("https://jsonplaceholder.typicode.com/todos/1");
+  asehoy vokatra;
+farany
+
+miandry lehibe();

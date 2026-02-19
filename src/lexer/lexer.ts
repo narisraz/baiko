@@ -25,8 +25,12 @@ export enum TokenType {
   Mety = "Mety",         // Mety(Type) — type optionnel
 
   // Import / export
-  Ampidiro = "Ampidiro", // ampidiro "file.baiko" — importer un fichier
-  Avoaka   = "Avoaka",  // avoaka — marquer comme exporté
+  Ampidiro  = "Ampidiro",  // ampidiro "file.baiko" — importer un fichier
+  Avoaka    = "Avoaka",    // avoaka — marquer comme exporté
+
+  // Async / await
+  Andrasana = "Andrasana", // andrasana — async (fonction asynchrone)
+  Miandry   = "Miandry",  // miandry — await (attendre une promesse)
 
   // Logical operators
   And = "And",           // ary (et)
@@ -79,8 +83,10 @@ const KEYWORDS: Record<string, TokenType> = {
   diso:     TokenType.False,
   tsisy:    TokenType.Tsisy,
   Mety:     TokenType.Mety,
-  ampidiro: TokenType.Ampidiro,
-  avoaka:   TokenType.Avoaka,
+  ampidiro:  TokenType.Ampidiro,
+  avoaka:    TokenType.Avoaka,
+  andrasana: TokenType.Andrasana,
+  miandry:   TokenType.Miandry,
   ary:      TokenType.And,
   na:       TokenType.Or,
   tsy:      TokenType.Not,

@@ -150,6 +150,21 @@ describe("Generator — package import", () => {
   test("appel de méthode → obj.method(args)", () => {
     expect(compile('asehoy axios.get("url");')).toBe('console.log(axios.get("url"));');
   });
+
+  test("accès propriété → obj.property", () => {
+    expect(compile("asehoy math.pi;")).toBe("console.log(math.pi);");
+  });
+});
+
+describe("Generator — andrasana / miandry", () => {
+  test("andrasana asa → async function", () => {
+    const out = compile("andrasana asa f(): Isa dia mamoaka 1; farany");
+    expect(out).toBe("async function f() {\n  return 1;\n}");
+  });
+
+  test("miandry expr → await expr", () => {
+    expect(compile("miandry f();")).toBe("await f();");
+  });
 });
 
 describe("Generator — indentation", () => {

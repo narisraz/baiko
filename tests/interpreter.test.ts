@@ -2,7 +2,7 @@ import { Lexer } from "../src/lexer/lexer";
 import { Parser } from "../src/parser/parser";
 import { Interpreter, RuntimeError, FileResolver } from "../src/interpreter/interpreter";
 
-function run(src: string, resolver?: FileResolver): string[] {
+async function run(src: string, resolver?: FileResolver): Promise<string[]> {
   const tokens = new Lexer(src).tokenize();
   const ast = new Parser(tokens).parse();
   const interpreter = new Interpreter(undefined, resolver);
@@ -12,188 +12,188 @@ function run(src: string, resolver?: FileResolver): string[] {
     lines.push(args.join(" "));
   });
 
-  interpreter.run(ast);
+  await interpreter.run(ast);
   spy.mockRestore();
   return lines;
 }
 
-function runThrows(src: string): string {
-  expect(() => run(src)).toThrow(RuntimeError);
-  try { run(src); } catch (e) { return (e as Error).message; }
+async function runThrows(src: string): Promise<string> {
+  await expect(run(src)).rejects.toThrow(RuntimeError);
+  try { await run(src); } catch (e) { return (e as Error).message; }
   return "";
 }
 
 describe("Interpréteur — littéraux et asehoy", () => {
-  test("nombre", () => {
-    expect(run("asehoy 42;")).toEqual(["42"]);
+  test("nombre", async () => {
+    expect(await run("asehoy 42;")).toEqual(["42"]);
   });
 
-  test("chaîne", () => {
-    expect(run('asehoy "Salama";')).toEqual(["Salama"]);
+  test("chaîne", async () => {
+    expect(await run('asehoy "Salama";')).toEqual(["Salama"]);
   });
 
-  test("marina affiché en malagasy", () => {
-    expect(run("asehoy marina;")).toEqual(["marina"]);
+  test("marina affiché en malagasy", async () => {
+    expect(await run("asehoy marina;")).toEqual(["marina"]);
   });
 
-  test("diso affiché en malagasy", () => {
-    expect(run("asehoy diso;")).toEqual(["diso"]);
+  test("diso affiché en malagasy", async () => {
+    expect(await run("asehoy diso;")).toEqual(["diso"]);
   });
 });
 
 describe("Interpréteur — variables", () => {
-  test("déclaration et lecture", () => {
-    expect(run("x: Isa = 10; asehoy x;")).toEqual(["10"]);
+  test("déclaration et lecture", async () => {
+    expect(await run("x: Isa = 10; asehoy x;")).toEqual(["10"]);
   });
 
-  test("réassignation", () => {
-    expect(run("x: Isa = 1; x = 99; asehoy x;")).toEqual(["99"]);
+  test("réassignation", async () => {
+    expect(await run("x: Isa = 1; x = 99; asehoy x;")).toEqual(["99"]);
   });
 
-  test("type invalide à la déclaration", () => {
-    expect(() => run('x: Isa = "texte";')).toThrow("Tsy mety ny karazana");
+  test("type invalide à la déclaration", async () => {
+    await expect(run('x: Isa = "texte";')).rejects.toThrow("Tsy mety ny karazana");
   });
 
-  test("variable non définie", () => {
-    expect(() => run("asehoy inconnu;")).toThrow("Tsy fantatra ny");
+  test("variable non définie", async () => {
+    await expect(run("asehoy inconnu;")).rejects.toThrow("Tsy fantatra ny");
   });
 
-  test("déclaration Mety sans valeur → tsisy", () => {
-    expect(run("x: Mety(Isa); asehoy x;")).toEqual(["tsisy"]);
+  test("déclaration Mety sans valeur → tsisy", async () => {
+    expect(await run("x: Mety(Isa); asehoy x;")).toEqual(["tsisy"]);
   });
 
-  test("déclaration Mety avec tsisy explicite → tsisy", () => {
-    expect(run("x: Mety(Isa) = tsisy; asehoy x;")).toEqual(["tsisy"]);
+  test("déclaration Mety avec tsisy explicite → tsisy", async () => {
+    expect(await run("x: Mety(Isa) = tsisy; asehoy x;")).toEqual(["tsisy"]);
   });
 
-  test("déclaration Mety sans valeur puis réassignation", () => {
-    expect(run("x: Mety(Isa); x = 42; asehoy x;")).toEqual(["42"]);
+  test("déclaration Mety sans valeur puis réassignation", async () => {
+    expect(await run("x: Mety(Isa); x = 42; asehoy x;")).toEqual(["42"]);
   });
 
-  test("comparaison avec tsisy (Mety)", () => {
-    expect(run("x: Mety(Isa); asehoy x == tsisy;")).toEqual(["marina"]);
+  test("comparaison avec tsisy (Mety)", async () => {
+    expect(await run("x: Mety(Isa); asehoy x == tsisy;")).toEqual(["marina"]);
   });
 
-  test("déclaration non-Mety sans init → erreur", () => {
-    expect(() => run("x: Isa;")).toThrow("karazana tsy azo tsisy");
+  test("déclaration non-Mety sans init → erreur", async () => {
+    await expect(run("x: Isa;")).rejects.toThrow("karazana tsy azo tsisy");
   });
 
-  test("déclaration non-Mety avec tsisy → erreur de type", () => {
-    expect(() => run("x: Isa = tsisy;")).toThrow("Tsy mety ny karazana");
+  test("déclaration non-Mety avec tsisy → erreur de type", async () => {
+    await expect(run("x: Isa = tsisy;")).rejects.toThrow("Tsy mety ny karazana");
   });
 
-  test("tsisy affiché en malagasy", () => {
-    expect(run("asehoy tsisy;")).toEqual(["tsisy"]);
+  test("tsisy affiché en malagasy", async () => {
+    expect(await run("asehoy tsisy;")).toEqual(["tsisy"]);
   });
 });
 
 describe("Interpréteur — tsisy strict (opérations interdites)", () => {
-  test("tsisy + nombre → erreur", () => {
-    expect(runThrows("x: Mety(Isa); asehoy x + 1;")).toMatch(/tsisy/);
+  test("tsisy + nombre → erreur", async () => {
+    expect(await runThrows("x: Mety(Isa); asehoy x + 1;")).toMatch(/tsisy/);
   });
 
-  test("nombre + tsisy → erreur", () => {
-    expect(runThrows("x: Mety(Isa); asehoy 1 + x;")).toMatch(/tsisy/);
+  test("nombre + tsisy → erreur", async () => {
+    expect(await runThrows("x: Mety(Isa); asehoy 1 + x;")).toMatch(/tsisy/);
   });
 
-  test("tsisy - nombre → erreur", () => {
-    expect(runThrows("x: Mety(Isa); asehoy x - 1;")).toMatch(/tsisy/);
+  test("tsisy - nombre → erreur", async () => {
+    expect(await runThrows("x: Mety(Isa); asehoy x - 1;")).toMatch(/tsisy/);
   });
 
-  test("tsisy * nombre → erreur", () => {
-    expect(runThrows("x: Mety(Isa); asehoy x * 2;")).toMatch(/tsisy/);
+  test("tsisy * nombre → erreur", async () => {
+    expect(await runThrows("x: Mety(Isa); asehoy x * 2;")).toMatch(/tsisy/);
   });
 
-  test("tsisy / nombre → erreur", () => {
-    expect(runThrows("x: Mety(Isa); asehoy x / 2;")).toMatch(/tsisy/);
+  test("tsisy / nombre → erreur", async () => {
+    expect(await runThrows("x: Mety(Isa); asehoy x / 2;")).toMatch(/tsisy/);
   });
 
-  test("tsisy > nombre → erreur", () => {
-    expect(runThrows("x: Mety(Isa); asehoy x > 0;")).toMatch(/tsisy/);
+  test("tsisy > nombre → erreur", async () => {
+    expect(await runThrows("x: Mety(Isa); asehoy x > 0;")).toMatch(/tsisy/);
   });
 
-  test("tsisy ary marina → erreur", () => {
-    expect(runThrows("x: Mety(Marina); asehoy x ary marina;")).toMatch(/tsisy/);
+  test("tsisy ary marina → erreur", async () => {
+    expect(await runThrows("x: Mety(Marina); asehoy x ary marina;")).toMatch(/tsisy/);
   });
 
-  test("tsisy na marina → erreur", () => {
-    expect(runThrows("x: Mety(Marina); asehoy x na marina;")).toMatch(/tsisy/);
+  test("tsisy na marina → erreur", async () => {
+    expect(await runThrows("x: Mety(Marina); asehoy x na marina;")).toMatch(/tsisy/);
   });
 
-  test("tsy tsisy → erreur", () => {
-    expect(runThrows("x: Mety(Marina); asehoy tsy x;")).toMatch(/tsisy/);
+  test("tsy tsisy → erreur", async () => {
+    expect(await runThrows("x: Mety(Marina); asehoy tsy x;")).toMatch(/tsisy/);
   });
 
-  test("tsisy == tsisy → autorisé", () => {
-    expect(run("asehoy tsisy == tsisy;")).toEqual(["marina"]);
+  test("tsisy == tsisy → autorisé", async () => {
+    expect(await run("asehoy tsisy == tsisy;")).toEqual(["marina"]);
   });
 
-  test("tsisy != 5 → autorisé", () => {
-    expect(run("x: Mety(Isa); asehoy x != 5;")).toEqual(["marina"]);
+  test("tsisy != 5 → autorisé", async () => {
+    expect(await run("x: Mety(Isa); asehoy x != 5;")).toEqual(["marina"]);
   });
 });
 
 describe("Interpréteur — arithmétique", () => {
-  test("addition", () => {
-    expect(run("asehoy 3 + 4;")).toEqual(["7"]);
+  test("addition", async () => {
+    expect(await run("asehoy 3 + 4;")).toEqual(["7"]);
   });
 
-  test("précédence * avant +", () => {
-    expect(run("asehoy 2 + 3 * 4;")).toEqual(["14"]);
+  test("précédence * avant +", async () => {
+    expect(await run("asehoy 2 + 3 * 4;")).toEqual(["14"]);
   });
 
-  test("concaténation de chaînes", () => {
-    expect(run('asehoy "Bon" + "jour";')).toEqual(["Bonjour"]);
+  test("concaténation de chaînes", async () => {
+    expect(await run('asehoy "Bon" + "jour";')).toEqual(["Bonjour"]);
   });
 
-  test("division par zéro", () => {
-    expect(() => run("asehoy 1 / 0;")).toThrow("Tsy azo zaraina");
+  test("division par zéro", async () => {
+    await expect(run("asehoy 1 / 0;")).rejects.toThrow("Tsy azo zaraina");
   });
 });
 
 describe("Interpréteur — opérateurs logiques", () => {
-  test("tsy marina → diso", () => {
-    expect(run("asehoy tsy marina;")).toEqual(["diso"]);
+  test("tsy marina → diso", async () => {
+    expect(await run("asehoy tsy marina;")).toEqual(["diso"]);
   });
 
-  test("marina ary marina → marina", () => {
-    expect(run("asehoy marina ary marina;")).toEqual(["marina"]);
+  test("marina ary marina → marina", async () => {
+    expect(await run("asehoy marina ary marina;")).toEqual(["marina"]);
   });
 
-  test("marina ary diso → diso", () => {
-    expect(run("asehoy marina ary diso;")).toEqual(["diso"]);
+  test("marina ary diso → diso", async () => {
+    expect(await run("asehoy marina ary diso;")).toEqual(["diso"]);
   });
 
-  test("diso na marina → marina", () => {
-    expect(run("asehoy diso na marina;")).toEqual(["marina"]);
+  test("diso na marina → marina", async () => {
+    expect(await run("asehoy diso na marina;")).toEqual(["marina"]);
   });
 
-  test("court-circuit ary : ne lève pas d'erreur si gauche est faux", () => {
+  test("court-circuit ary : ne lève pas d'erreur si gauche est faux", async () => {
     // Si ary n'est pas court-circuit, "inconnu" lèverait une erreur
-    expect(run("raha diso ary diso dia asehoy inconnu; farany")).toEqual([]);
+    expect(await run("raha diso ary diso dia asehoy inconnu; farany")).toEqual([]);
   });
 
-  test("court-circuit na : ne lève pas d'erreur si gauche est vrai", () => {
-    expect(run("raha marina na diso dia asehoy 1; farany")).toEqual(["1"]);
+  test("court-circuit na : ne lève pas d'erreur si gauche est vrai", async () => {
+    expect(await run("raha marina na diso dia asehoy 1; farany")).toEqual(["1"]);
   });
 });
 
 describe("Interpréteur — raha / ankoatra", () => {
-  test("branche vraie", () => {
-    expect(run('raha 1 > 0 dia asehoy "oui"; farany')).toEqual(["oui"]);
+  test("branche vraie", async () => {
+    expect(await run('raha 1 > 0 dia asehoy "oui"; farany')).toEqual(["oui"]);
   });
 
-  test("branche fausse avec else", () => {
-    expect(run('raha 1 > 5 dia asehoy "oui"; ankoatra dia asehoy "non"; farany')).toEqual(["non"]);
+  test("branche fausse avec else", async () => {
+    expect(await run('raha 1 > 5 dia asehoy "oui"; ankoatra dia asehoy "non"; farany')).toEqual(["non"]);
   });
 
-  test("condition fausse sans else : rien", () => {
-    expect(run("raha diso dia asehoy 1; farany")).toEqual([]);
+  test("condition fausse sans else : rien", async () => {
+    expect(await run("raha diso dia asehoy 1; farany")).toEqual([]);
   });
 });
 
 describe("Interpréteur — avereno raha", () => {
-  test("boucle 1 à 3", () => {
+  test("boucle 1 à 3", async () => {
     const src = `
       i: Isa = 1;
       avereno raha i <= 3 dia
@@ -201,26 +201,26 @@ describe("Interpréteur — avereno raha", () => {
         i = i + 1;
       farany
     `;
-    expect(run(src)).toEqual(["1", "2", "3"]);
+    expect(await run(src)).toEqual(["1", "2", "3"]);
   });
 
-  test("boucle ne s'exécute pas si condition fausse", () => {
-    expect(run("avereno raha diso dia asehoy 1; farany")).toEqual([]);
+  test("boucle ne s'exécute pas si condition fausse", async () => {
+    expect(await run("avereno raha diso dia asehoy 1; farany")).toEqual([]);
   });
 });
 
 describe("Interpréteur — fonctions", () => {
-  test("fonction simple", () => {
+  test("fonction simple", async () => {
     const src = `
       asa ampio(a: Isa, b: Isa): Isa dia
         mamoaka a + b;
       farany
       asehoy ampio(3, 4);
     `;
-    expect(run(src)).toEqual(["7"]);
+    expect(await run(src)).toEqual(["7"]);
   });
 
-  test("récursion — factorielle", () => {
+  test("récursion — factorielle", async () => {
     const src = `
       asa facto(n: Isa): Isa dia
         raha n <= 1 dia
@@ -230,26 +230,26 @@ describe("Interpréteur — fonctions", () => {
       farany
       asehoy facto(5);
     `;
-    expect(run(src)).toEqual(["120"]);
+    expect(await run(src)).toEqual(["120"]);
   });
 
-  test("mauvais nombre d'arguments", () => {
+  test("mauvais nombre d'arguments", async () => {
     const src = `
       asa f(x: Isa): Isa dia mamoaka x; farany
       f(1, 2);
     `;
-    expect(() => run(src)).toThrow("mitaky tohan-teny");
+    await expect(run(src)).rejects.toThrow("mitaky tohan-teny");
   });
 
-  test("type invalide dans les arguments", () => {
+  test("type invalide dans les arguments", async () => {
     const src = `
       asa f(x: Isa): Isa dia mamoaka x; farany
       f("texte");
     `;
-    expect(() => run(src)).toThrow("Tsy mety ny karazana");
+    await expect(run(src)).rejects.toThrow("Tsy mety ny karazana");
   });
 
-  test("closure — accès au scope parent", () => {
+  test("closure — accès au scope parent", async () => {
     const src = `
       x: Isa = 10;
       asa addX(n: Isa): Isa dia
@@ -257,29 +257,57 @@ describe("Interpréteur — fonctions", () => {
       farany
       asehoy addX(5);
     `;
-    expect(run(src)).toEqual(["15"]);
+    expect(await run(src)).toEqual(["15"]);
   });
 
-  test("appel sur un non-fonction", () => {
-    expect(() => run("x: Isa = 1; x(2);")).toThrow("tsy asa");
+  test("appel sur un non-fonction", async () => {
+    await expect(run("x: Isa = 1; x(2);")).rejects.toThrow("tsy asa");
+  });
+});
+
+describe("Interpréteur — andrasana / miandry (async/await)", () => {
+  test("asa andrasana miverina Promise", async () => {
+    const src = `
+      andrasana asa greet(): Soratra dia
+        mamoaka "salama";
+      farany
+      asehoy miandry greet();
+    `;
+    expect(await run(src)).toEqual(["salama"]);
+  });
+
+  test("miandry Promise.resolve natif", async () => {
+    // Utilise le pkgResolver injectable pour simuler une réponse async
+    const tokens = new Lexer(`
+      andrasana asa fetchData(): Soratra dia
+        mamoaka "data";
+      farany
+      asehoy miandry fetchData();
+    `).tokenize();
+    const ast = new Parser(tokens).parse();
+    const lines: string[] = [];
+    const spy = jest.spyOn(console, "log").mockImplementation((...args) => lines.push(String(args[0])));
+    await new Interpreter().run(ast);
+    spy.mockRestore();
+    expect(lines).toEqual(["data"]);
   });
 });
 
 describe("Interpréteur — package natif", () => {
-  test("package introuvable → erreur", () => {
-    expect(() => run('ampidiro "package:__baiko_inexistant__";'))
-      .toThrow("Tsy hita ny package");
+  test("package introuvable → erreur", async () => {
+    await expect(run('ampidiro "package:__baiko_inexistant__";'))
+      .rejects.toThrow("Tsy hita ny package");
   });
 
-  test("appel de méthode sur module Node.js built-in (path)", () => {
+  test("appel de méthode sur module Node.js built-in (path)", async () => {
     const src = `
       ampidiro "package:path";
       asehoy path.basename("/foo/bar.txt");
     `;
-    expect(run(src)).toEqual(["bar.txt"]);
+    expect(await run(src)).toEqual(["bar.txt"]);
   });
 
-  test("pkgResolver injectable (no-op Proxy)", () => {
+  test("pkgResolver injectable (no-op Proxy)", async () => {
     const { Interpreter: Interp } = require("../src/interpreter/interpreter");
     const noop = (_: string) =>
       new Proxy({} as Record<string, unknown>, { get: () => (..._a: unknown[]) => null });
@@ -290,7 +318,7 @@ describe("Interpréteur — package natif", () => {
       asehoy axios.get("url");
     `).tokenize();
     const ast = new (require("../src/parser/parser").Parser)(tokens).parse();
-    new Interp(undefined, undefined, noop).run(ast);
+    await new Interp(undefined, undefined, noop).run(ast);
     spy.mockRestore();
     expect(lines).toEqual(["tsisy"]);
   });
@@ -314,51 +342,51 @@ describe("Interpréteur — ampidiro (imports)", () => {
     throw new Error(`Rakitra tsy misy: ${p}`);
   };
 
-  test("importe et utilise une fonction", () => {
+  test("importe et utilise une fonction", async () => {
     const src = `
       ampidiro "math.baiko";
       asehoy double(5);
     `;
-    expect(run(src, mockResolver)).toEqual(["10"]);
+    expect(await run(src, mockResolver)).toEqual(["10"]);
   });
 
-  test("importe plusieurs fonctions", () => {
+  test("importe plusieurs fonctions", async () => {
     const src = `
       ampidiro "math.baiko";
       asehoy double(3);
       asehoy carre(4);
     `;
-    expect(run(src, mockResolver)).toEqual(["6", "16"]);
+    expect(await run(src, mockResolver)).toEqual(["6", "16"]);
   });
 
-  test("import double ignoré (guard circulaire)", () => {
+  test("import double ignoré (guard circulaire)", async () => {
     const src = `
       ampidiro "math.baiko";
       ampidiro "math.baiko";
       asehoy double(2);
     `;
-    expect(run(src, mockResolver)).toEqual(["4"]);
+    expect(await run(src, mockResolver)).toEqual(["4"]);
   });
 
-  test("fichier introuvable → erreur", () => {
-    expect(() => run('ampidiro "inexistant.baiko";', mockResolver))
-      .toThrow("Tsy azo ampidirina");
+  test("fichier introuvable → erreur", async () => {
+    await expect(run('ampidiro "inexistant.baiko";', mockResolver))
+      .rejects.toThrow("Tsy azo ampidirina");
   });
 
-  test("sans resolver → erreur", () => {
-    expect(() => run('ampidiro "math.baiko";'))
-      .toThrow("Tsy azo ampidirina");
+  test("sans resolver → erreur", async () => {
+    await expect(run('ampidiro "math.baiko";'))
+      .rejects.toThrow("Tsy azo ampidirina");
   });
 
-  test("déclaration non-avoaka reste privée", () => {
+  test("déclaration non-avoaka reste privée", async () => {
     const src = `
       ampidiro "math.baiko";
       asehoy secret();
     `;
-    expect(() => run(src, mockResolver)).toThrow("Tsy fantatra");
+    await expect(run(src, mockResolver)).rejects.toThrow("Tsy fantatra");
   });
 
-  test("avoaka variable importée", () => {
+  test("avoaka variable importée", async () => {
     const libWithVar = `avoaka x: Isa = 42;`;
     const resolver: FileResolver = (p) => {
       if (p === "const.baiko") return libWithVar;
@@ -368,6 +396,6 @@ describe("Interpréteur — ampidiro (imports)", () => {
       ampidiro "const.baiko";
       asehoy x;
     `;
-    expect(run(src, resolver)).toEqual(["42"]);
+    expect(await run(src, resolver)).toEqual(["42"]);
   });
 });

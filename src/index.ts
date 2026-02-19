@@ -45,24 +45,26 @@ function makeResolver(baseDir: string) {
   };
 }
 
-try {
-  const ast = parse(source);
-  const resolver = makeResolver(dir);
+(async () => {
+  try {
+    const ast = parse(source);
+    const resolver = makeResolver(dir);
 
-  switch (flag) {
-    case "--compile":
-    default: {
-      console.log(new Generator(resolver).generate(ast));
-      break;
+    switch (flag) {
+      case "--compile":
+      default: {
+        console.log(new Generator(resolver).generate(ast));
+        break;
+      }
+      case "--run":
+      case "--interpret": {
+        await new Interpreter(undefined, resolver).run(ast);
+        break;
+      }
     }
-    case "--run":
-    case "--interpret": {
-      new Interpreter(undefined, resolver).run(ast);
-      break;
-    }
+  } catch (err) {
+    const prefix = err instanceof RuntimeError ? "Hadisoana amin'ny fanatanterahana" : "Hadisoana";
+    console.error(`${prefix}: ${(err as Error).message}`);
+    process.exit(1);
   }
-} catch (err) {
-  const prefix = err instanceof RuntimeError ? "Hadisoana amin'ny fanatanterahana" : "Hadisoana";
-  console.error(`${prefix}: ${(err as Error).message}`);
-  process.exit(1);
-}
+})();

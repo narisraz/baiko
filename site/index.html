@@ -97,9 +97,9 @@
       return null;
     }
 
-    function baikoLint(code) {
-      const errors = BaikoWeb.checkBaiko(code);
-      return errors.map(function(err) {
+    function baikoLint(code, updateLinting) {
+      BaikoWeb.checkBaiko(code).then(function(errors) {
+        updateLinting(errors.map(function(err) {
         let from, to;
 
         if (err.line !== null && err.col !== null) {
@@ -134,6 +134,7 @@
         }
 
         return { from, to, message: err.message, severity: "error" };
+        }));
       });
     }
 
@@ -141,8 +142,8 @@
 
     // ---- Autocomplete ----
     const BAIKO_KEYWORDS = [
-      "asa", "raha", "ankoatra", "avereno raha", "mamoaka",
-      "dia", "farany", "asehoy", "ary", "na", "tsy", "ampidiro", "avoaka",
+      "asa", "andrasana", "raha", "ankoatra", "avereno raha", "mamoaka",
+      "dia", "farany", "asehoy", "ary", "na", "tsy", "miandry", "ampidiro", "avoaka",
       "marina", "diso", "tsisy", "Isa", "Soratra", "Marina", "Mety",
     ];
 
@@ -178,7 +179,7 @@
       start: [
         { regex: /#.*/, token: "comment" },
         { regex: /"(?:[^"\\]|\\.)*"/, token: "string" },
-        { regex: /\b(?:avereno raha|asa|raha|ankoatra|mamoaka|dia|farany|asehoy|ary|na|tsy|ampidiro|avoaka)\b/, token: "keyword" },
+        { regex: /\b(?:avereno raha|asa|andrasana|miandry|raha|ankoatra|mamoaka|dia|farany|asehoy|ary|na|tsy|ampidiro|avoaka)\b/, token: "keyword" },
         { regex: /\b(?:marina|diso|tsisy)\b/, token: "atom" },
         { regex: /\b(?:Isa|Soratra|Marina|Mety)\b/, token: "variable-2" },
         { regex: /\b\d+(?:\.\d+)?\b/, token: "number" },
@@ -196,7 +197,7 @@
       indentWithTabs: false,
       autofocus: true,
       gutters: ["CodeMirror-lint-markers"],
-      lint: { getAnnotations: baikoLint, async: false, delay: 400 },
+      lint: { getAnnotations: baikoLint, async: true, delay: 400 },
       extraKeys: {
         "Ctrl-Enter": runCode,
         "Cmd-Enter": runCode,
@@ -225,12 +226,12 @@
     // ---- Run ----
     const output = document.getElementById("output");
 
-    function runCode() {
+    async function runCode() {
       const code = cm.getValue();
       output.textContent = "";
       output.className = "";
       try {
-        const result = BaikoWeb.runBaiko(code);
+        const result = await BaikoWeb.runBaiko(code);
         output.textContent = result || "(tsy misy vokatra)";
         output.classList.add("ok");
       } catch (e) {

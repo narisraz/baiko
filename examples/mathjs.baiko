@@ -1,0 +1,36 @@
+# Ohatra — mathjs
+# npm install mathjs
+
+ampidiro "package:mathjs";
+
+# Faka seranan-tany (racine carrée)
+serany: Mety(Isa) = mathjs.sqrt(144);
+asehoy "sqrt(144) =";
+asehoy serany;
+
+# Hery (puissance)
+hery: Mety(Isa) = mathjs.pow(2, 10);
+asehoy "2^10 =";
+asehoy hery;
+
+# Factorial
+facto: Mety(Isa) = mathjs.factorial(6);
+asehoy "6! =";
+asehoy facto;
+
+# Fandinihana fiteny kajy (evaluate)
+vokatra: Mety(Isa) = mathjs.evaluate("2 + 3 * 4");
+asehoy "2 + 3 * 4 =";
+asehoy vokatra;
+
+# Pi sy sine (evaluate miaro ny fandaharana hevitra)
+siny: Mety(Isa) = mathjs.evaluate("sin(90 deg)");
+asehoy "sin(90 deg) =";
+asehoy siny;
+
+# Accès de propriété directe
+asehoy "pi =";
+asehoy mathjs.pi;
+
+asehoy "sin(pi / 2)";
+asehoy mathjs.sin(mathjs.pi / 2);

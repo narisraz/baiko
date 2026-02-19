@@ -21,6 +21,8 @@ import {
   TsisyLiteral,
   UnaryExpression,
   MemberCallExpression,
+  MemberExpression,
+  AwaitExpression,
   BaikoType,
   MetyType,
   VarType,
@@ -47,6 +49,7 @@ const TOKEN_DESC: Partial<Record<TokenType, string>> = {
   [TokenType.Mety]:        '"Mety" (karazana azo tsisy)',
   [TokenType.Raha]:        '"raha"',
   [TokenType.Avoaka]:      '"avoaka" (fanambaran\'ny avoaka)',
+  [TokenType.Andrasana]:   '"andrasana" (asa tsy mitoky)',
 };
 
 function pos(line: number, col: number): string {
@@ -90,18 +93,32 @@ export class Parser {
       return this.parseVariableDeclaration();
     }
     switch (this.peek().type) {
-      case TokenType.Asa:      return this.parseFunctionDeclaration();
-      case TokenType.Raha:     return this.parseIfStatement();
-      case TokenType.Mamoaka:  return this.parseReturnStatement();
-      case TokenType.Asehoy:   return this.parsePrintStatement();
-      case TokenType.Ampidiro: return this.parseImportStatement();
-      default:                 return this.parseExpressionStatement();
+      case TokenType.Asa:        return this.parseFunctionDeclaration();
+      case TokenType.Andrasana:  return this.parseAsyncFunctionDeclaration();
+      case TokenType.Raha:       return this.parseIfStatement();
+      case TokenType.Mamoaka:    return this.parseReturnStatement();
+      case TokenType.Asehoy:     return this.parsePrintStatement();
+      case TokenType.Ampidiro:   return this.parseImportStatement();
+      default:                   return this.parseExpressionStatement();
     }
   }
 
-  /** avoaka asa ... ou avoaka identifier: ... */
+  /** andrasana asa name(...) dia ... farany */
+  private parseAsyncFunctionDeclaration(): FunctionDeclaration {
+    this.expect(TokenType.Andrasana);
+    const fn = this.parseFunctionDeclaration();
+    fn.async = true;
+    return fn;
+  }
+
+  /** avoaka asa ... / avoaka andrasana asa ... / avoaka identifier: ... */
   private parseExportedStatement(): FunctionDeclaration | VariableDeclaration {
     this.expect(TokenType.Avoaka);
+    if (this.check(TokenType.Andrasana)) {
+      const fn = this.parseAsyncFunctionDeclaration();
+      fn.exported = true;
+      return fn;
+    }
     if (this.check(TokenType.Asa)) {
       const fn = this.parseFunctionDeclaration();
       fn.exported = true;
@@ -140,7 +157,7 @@ export class Parser {
     const body = this.parseBlock();
     this.expect(TokenType.Farany);
 
-    return { type: "FunctionDeclaration", name, params, returnType, body, exported: false };
+    return { type: "FunctionDeclaration", name, params, returnType, body, exported: false, async: false };
   }
 
   /** x: Isa = expr;  ou  x: Mety(Isa) [= expr]; */
@@ -358,6 +375,11 @@ export class Parser {
   }
 
   private parseUnary(): Expression {
+    if (this.check(TokenType.Miandry)) {
+      this.advance();
+      const value = this.parseUnary();
+      return { type: "AwaitExpression", value } as AwaitExpression;
+    }
     if (this.check(TokenType.Not)) {
       this.advance();
       const operand = this.parseUnary();
@@ -386,13 +408,15 @@ export class Parser {
 
     if (tok.type === TokenType.Identifier) {
       this.advance();
-      // Member call: obj.method(args)
+      // Member access: obj.property  or  obj.method(args)
       if (this.match(TokenType.Dot)) {
-        const method = this.expect(TokenType.Identifier).value;
-        this.expect(TokenType.LeftParen);
-        const args = this.parseArgs();
-        this.expect(TokenType.RightParen);
-        return { type: "MemberCallExpression", object: tok.value, method, args } as MemberCallExpression;
+        const name = this.expect(TokenType.Identifier).value;
+        if (this.match(TokenType.LeftParen)) {
+          const args = this.parseArgs();
+          this.expect(TokenType.RightParen);
+          return { type: "MemberCallExpression", object: tok.value, method: name, args } as MemberCallExpression;
+        }
+        return { type: "MemberExpression", object: tok.value, property: name } as MemberExpression;
       }
       // Regular call expression: name(args)
       if (this.match(TokenType.LeftParen)) {
