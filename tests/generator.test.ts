@@ -8,6 +8,20 @@ function compile(src: string): string {
   return new Generator().generate(ast);
 }
 
+describe("Generator — déclaration de variable typée", () => {
+  test("x: Isa → let avec annotation", () => {
+    expect(compile("x: Isa = 5;")).toBe("let /** @type {Isa} */ x = 5;");
+  });
+
+  test("nom: Soratra", () => {
+    expect(compile('nom: Soratra = "Rakoto";')).toBe('let /** @type {Soratra} */ nom = "Rakoto";');
+  });
+
+  test("voky: Marina", () => {
+    expect(compile("voky: Marina = marina;")).toBe("let /** @type {Marina} */ voky = true;");
+  });
+});
+
 describe("Generator — littéraux", () => {
   test("nombre", () => {
     expect(compile("42;")).toBe("42;");

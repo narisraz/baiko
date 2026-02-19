@@ -4,6 +4,7 @@ import {
   Statement,
   Expression,
   FunctionDeclaration,
+  VariableDeclaration,
   Parameter,
   IfStatement,
   WhileStatement,
@@ -46,6 +47,14 @@ export class Parser {
     if (this.check(TokenType.Avereno) && this.tokens[this.pos + 1]?.type === TokenType.Raha) {
       return this.parseWhileStatement();
     }
+    // "identifier : Type =" → déclaration typée
+    if (
+      this.check(TokenType.Identifier) &&
+      this.tokens[this.pos + 1]?.type === TokenType.Colon &&
+      TYPE_TOKENS.has(this.tokens[this.pos + 2]?.type)
+    ) {
+      return this.parseVariableDeclaration();
+    }
     switch (this.peek().type) {
       case TokenType.Asa:     return this.parseFunctionDeclaration();
       case TokenType.Raha:    return this.parseIfStatement();
@@ -73,6 +82,17 @@ export class Parser {
     this.expect(TokenType.Farany);
 
     return { type: "FunctionDeclaration", name, params, returnType, body };
+  }
+
+  /** x: Isa = expr; */
+  private parseVariableDeclaration(): VariableDeclaration {
+    const name = this.expect(TokenType.Identifier).value;
+    this.expect(TokenType.Colon);
+    const varType = this.parseType();
+    this.expect(TokenType.Equal);
+    const value = this.parseExpression();
+    this.expect(TokenType.Semicolon);
+    return { type: "VariableDeclaration", varType, name, value };
   }
 
   private parseParams(): Parameter[] {

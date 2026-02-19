@@ -3,6 +3,7 @@ import {
   Statement,
   Expression,
   FunctionDeclaration,
+  VariableDeclaration,
   IfStatement,
   WhileStatement,
   ReturnStatement,
@@ -30,12 +31,17 @@ export class Generator {
   private genStatement(stmt: Statement): string {
     switch (stmt.type) {
       case "FunctionDeclaration":  return this.genFunction(stmt as FunctionDeclaration);
+      case "VariableDeclaration":  return this.genVarDecl(stmt as VariableDeclaration);
       case "IfStatement":          return this.genIf(stmt as IfStatement);
       case "WhileStatement":       return this.genWhile(stmt as WhileStatement);
       case "ReturnStatement":      return this.genReturn(stmt as ReturnStatement);
       case "PrintStatement":       return this.genPrint(stmt as PrintStatement);
       case "ExpressionStatement":  return this.pad() + this.genExpression((stmt as ExpressionStatement).expression) + ";";
     }
+  }
+
+  private genVarDecl(node: VariableDeclaration): string {
+    return `${this.pad()}let /** @type {${node.varType}} */ ${node.name} = ${this.genExpression(node.value)};`;
   }
 
   private genFunction(node: FunctionDeclaration): string {

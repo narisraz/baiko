@@ -3,6 +3,7 @@ import { Parser } from "../src/parser/parser";
 import {
   Program,
   FunctionDeclaration,
+  VariableDeclaration,
   IfStatement,
   WhileStatement,
   ReturnStatement,
@@ -108,6 +109,29 @@ describe("Parser — expressions logiques", () => {
     const node = expr("a na b ary c;") as BinaryExpression;
     expect(node.operator).toBe("na");
     expect((node.right as BinaryExpression).operator).toBe("ary");
+  });
+});
+
+describe("Parser — déclaration de variable typée", () => {
+  test("x: Isa = 5", () => {
+    const node = first("x: Isa = 5;") as VariableDeclaration;
+    expect(node.type).toBe("VariableDeclaration");
+    expect(node.varType).toBe("Isa");
+    expect(node.name).toBe("x");
+    expect((node.value as NumericLiteral).value).toBe(5);
+  });
+
+  test("nom: Soratra = chaîne", () => {
+    const node = first('nom: Soratra = "Rakoto";') as VariableDeclaration;
+    expect(node.varType).toBe("Soratra");
+    expect(node.name).toBe("nom");
+    expect((node.value as StringLiteral).value).toBe("Rakoto");
+  });
+
+  test("voky: Marina = marina", () => {
+    const node = first("voky: Marina = marina;") as VariableDeclaration;
+    expect(node.varType).toBe("Marina");
+    expect((node.value as BooleanLiteral).value).toBe(true);
   });
 });
 

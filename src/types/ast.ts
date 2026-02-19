@@ -6,6 +6,7 @@ export type NodeType =
   | "WhileStatement"
   | "ReturnStatement"
   | "PrintStatement"
+  | "VariableDeclaration"
   | "ExpressionStatement"
   | "AssignmentExpression"
   | "BinaryExpression"
@@ -33,11 +34,20 @@ export interface Program extends BaseNode {
 
 export type Statement =
   | FunctionDeclaration
+  | VariableDeclaration
   | IfStatement
   | WhileStatement
   | ReturnStatement
   | PrintStatement
   | ExpressionStatement;
+
+/** Isa x = expr; */
+export interface VariableDeclaration extends BaseNode {
+  type: "VariableDeclaration";
+  varType: BaikoType;
+  name: string;
+  value: Expression;
+}
 
 /** asa name(params): ReturnType dia ... farany */
 export interface FunctionDeclaration extends BaseNode {
