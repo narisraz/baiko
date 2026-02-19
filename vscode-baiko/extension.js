@@ -506,12 +506,69 @@ function findTokenInDocument(document, name) {
   return null;
 }
 
+/**
+ * Vérifie statiquement que les accès natifs (obj.member) font référence
+ * à des membres qui existent dans le .d.ts du paquet.
+ * Retourne des erreurs au format { message, line, col } (1-indexés).
+ */
+function checkNativeAccess(document, workspaceDir) {
+  const errors = [];
+  const text = document.getText();
+  const lines = text.split("\n");
+
+  // Collecte les paquets importés et leurs membres connus
+  const packages = new Map(); // varName → { pkgName, members: Set<string> }
+  const importRe = /^\s*ampidiro\s+"package:([^"]+)"/gm;
+  let m;
+  while ((m = importRe.exec(text)) !== null) {
+    const pkgName = m[1];
+    const varName = deriveVarName(pkgName);
+    const dtsPath = resolveDtsPath(workspaceDir, pkgName);
+    if (dtsPath) {
+      const members = new Set(extractMembersFromDts(dtsPath).map((mem) => mem.name));
+      packages.set(varName, { pkgName, members });
+    }
+  }
+
+  if (packages.size === 0) return errors;
+
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const line = lines[lineIdx];
+    if (line.trimStart().startsWith("#")) continue; // commentaire Baiko
+
+    for (const [varName, { pkgName, members }] of packages) {
+      const esc = varName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const accessRe = new RegExp(`\\b${esc}\\.([a-zA-Z_$][a-zA-Z0-9_$]*)`, "g");
+      let match;
+      while ((match = accessRe.exec(line)) !== null) {
+        const memberName = match[1];
+        // Ignore les accès dans les chaînes (heuristique : compter les guillemets avant)
+        const before = line.slice(0, match.index);
+        if ((before.match(/"/g) || []).length % 2 !== 0) continue;
+        if (!members.has(memberName)) {
+          const col = match.index + varName.length + 1; // 0-indexé, pointe sur memberName
+          errors.push({
+            message: `"${memberName}" tsy hita ao amin'ny paokaty "${pkgName}"`,
+            line: lineIdx + 1,
+            col: col + 1, // 1-indexé
+          });
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
 async function computeDiagnostics(document, collection) {
   if (document.languageId !== "baiko") return;
 
   const dir = path.dirname(document.uri.fsPath);
   const resolver = (importPath) => fs.readFileSync(path.resolve(dir, importPath), "utf-8");
-  const errors = await checkBaiko(document.getText(), resolver);
+  const errors = [
+    ...(await checkBaiko(document.getText(), resolver)),
+    ...checkNativeAccess(document, dir),
+  ];
   const diags = errors.map((err) => {
     let range;
 
