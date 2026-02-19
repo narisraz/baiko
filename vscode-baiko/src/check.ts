@@ -1,6 +1,6 @@
 import { Lexer } from "../../src/lexer/lexer";
 import { Parser } from "../../src/parser/parser";
-import { Interpreter } from "../../src/interpreter/interpreter";
+import { Interpreter, FileResolver } from "../../src/interpreter/interpreter";
 
 export interface BaikoError {
   message: string;
@@ -8,11 +8,11 @@ export interface BaikoError {
   col: number | null;  // 1-based
 }
 
-export function checkBaiko(code: string): BaikoError[] {
+export function checkBaiko(code: string, resolver?: FileResolver): BaikoError[] {
   try {
     const tokens = new Lexer(code).tokenize();
     const program = new Parser(tokens).parse();
-    new Interpreter().run(program);
+    new Interpreter(undefined, resolver).run(program);
     return [];
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

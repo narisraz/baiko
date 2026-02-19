@@ -1,5 +1,7 @@
 "use strict";
 const vscode = require("vscode");
+const fs = require("fs");
+const path = require("path");
 const { checkBaiko } = require("./baiko-check.js");
 
 // ---- Documentation des mots-clés ----
@@ -237,7 +239,9 @@ function findTokenInDocument(document, name) {
 function computeDiagnostics(document, collection) {
   if (document.languageId !== "baiko") return;
 
-  const errors = checkBaiko(document.getText());
+  const dir = path.dirname(document.uri.fsPath);
+  const resolver = (importPath) => fs.readFileSync(path.resolve(dir, importPath), "utf-8");
+  const errors = checkBaiko(document.getText(), resolver);
   const diags = errors.map((err) => {
     let range;
 
