@@ -61,6 +61,7 @@ export enum TokenType {
   Colon = "Colon",           // :
   Comma = "Comma",           // ,
   Semicolon = "Semicolon",   // ;
+  Dot = "Dot",               // .
 
   EOF = "EOF",
 }
@@ -155,6 +156,7 @@ export class Lexer {
       ":": TokenType.Colon,
       ",": TokenType.Comma,
       ";": TokenType.Semicolon,
+      ".": TokenType.Dot,
     };
     if (one[ch]) {
       this.advance();

@@ -17,7 +17,8 @@ export type NodeType =
   | "StringLiteral"
   | "BooleanLiteral"
   | "TsisyLiteral"
-  | "UnaryExpression";
+  | "UnaryExpression"
+  | "MemberCallExpression";
 
 export type BaikoType = "Isa" | "Soratra" | "Marina";
 
@@ -122,6 +123,7 @@ export type Expression =
   | BinaryExpression
   | UnaryExpression
   | CallExpression
+  | MemberCallExpression
   | Identifier
   | NumericLiteral
   | StringLiteral
@@ -177,4 +179,12 @@ export interface BooleanLiteral extends BaseNode {
 
 export interface TsisyLiteral extends BaseNode {
   type: "TsisyLiteral";
+}
+
+/** pkg.method(args) — appel de méthode sur un objet natif */
+export interface MemberCallExpression extends BaseNode {
+  type: "MemberCallExpression";
+  object: string;
+  method: string;
+  args: Expression[];
 }

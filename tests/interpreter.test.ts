@@ -265,6 +265,37 @@ describe("Interpréteur — fonctions", () => {
   });
 });
 
+describe("Interpréteur — package natif", () => {
+  test("package introuvable → erreur", () => {
+    expect(() => run('ampidiro "package:__baiko_inexistant__";'))
+      .toThrow("Tsy hita ny package");
+  });
+
+  test("appel de méthode sur module Node.js built-in (path)", () => {
+    const src = `
+      ampidiro "package:path";
+      asehoy path.basename("/foo/bar.txt");
+    `;
+    expect(run(src)).toEqual(["bar.txt"]);
+  });
+
+  test("pkgResolver injectable (no-op Proxy)", () => {
+    const { Interpreter: Interp } = require("../src/interpreter/interpreter");
+    const noop = (_: string) =>
+      new Proxy({} as Record<string, unknown>, { get: () => (..._a: unknown[]) => null });
+    const lines: string[] = [];
+    const spy = jest.spyOn(console, "log").mockImplementation((...args) => lines.push(String(args[0])));
+    const tokens = new (require("../src/lexer/lexer").Lexer)(`
+      ampidiro "package:axios";
+      asehoy axios.get("url");
+    `).tokenize();
+    const ast = new (require("../src/parser/parser").Parser)(tokens).parse();
+    new Interp(undefined, undefined, noop).run(ast);
+    spy.mockRestore();
+    expect(lines).toEqual(["tsisy"]);
+  });
+});
+
 describe("Interpréteur — ampidiro (imports)", () => {
   const mathLib = `
     avoaka asa double(n: Isa): Isa dia

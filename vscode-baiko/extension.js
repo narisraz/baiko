@@ -191,6 +191,46 @@ function buildSignatureHelp(document, position) {
 
 // ---- DefinitionProvider ----
 
+/** Retourne la Location de `word` dans le fichier à `filePath`, ou null. */
+function findDefinitionInFileText(filePath, text, word) {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const uri = vscode.Uri.file(filePath);
+
+  const fnRe = new RegExp(`\\basa\\s+(${escaped})\\s*\\(`, "g");
+  const fnMatch = fnRe.exec(text);
+  if (fnMatch) {
+    const before = text.slice(0, fnMatch.index);
+    const line = (before.match(/\n/g) || []).length;
+    const col  = fnMatch.index - before.lastIndexOf("\n") - 1;
+    return new vscode.Location(uri, new vscode.Position(line, col));
+  }
+
+  const varRe = new RegExp(`\\b(${escaped})\\s*:\\s*(?:Mety\\s*\\(\\s*)?(Isa|Soratra|Marina)\\b`, "g");
+  const varMatch = varRe.exec(text);
+  if (varMatch) {
+    const before = text.slice(0, varMatch.index);
+    const line = (before.match(/\n/g) || []).length;
+    const col  = varMatch.index - before.lastIndexOf("\n") - 1;
+    return new vscode.Location(uri, new vscode.Position(line, col));
+  }
+
+  return null;
+}
+
+/** Retourne les chemins absolus de tous les fichiers importés par `document`. */
+function getImportedPaths(document) {
+  const dir  = path.dirname(document.uri.fsPath);
+  const text = document.getText();
+  const re   = /^\s*ampidiro\s+"([^"]+)"/gm;
+  const paths = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const resolved = path.resolve(dir, m[1]);
+    if (fs.existsSync(resolved)) paths.push(resolved);
+  }
+  return paths;
+}
+
 function buildDefinition(document, position) {
   // ---- Import : clic sur le chemin "fichier.baiko" ----
   const importRange = document.getWordRangeAtPosition(position, /"[^"]*"/);
@@ -214,22 +254,17 @@ function buildDefinition(document, position) {
   const word = document.getText(range);
   if (KEYWORD_DOCS[word]) return null; // mots-clés : pas de définition
 
-  const text = document.getText();
+  // Cherche d'abord dans le fichier courant
+  const loc = findDefinitionInFileText(document.uri.fsPath, document.getText(), word);
+  if (loc) return loc;
 
-  // Cherche "asa <word>("
-  const fnRe = new RegExp(`\\basa\\s+(${word})\\s*\\(`, "g");
-  const fnMatch = fnRe.exec(text);
-  if (fnMatch) {
-    const pos = document.positionAt(fnMatch.index);
-    return new vscode.Location(document.uri, pos);
-  }
-
-  // Cherche "<word>: Type =" ou "<word>: Mety(Type) ="
-  const varRe = new RegExp(`\\b(${word})\\s*:\\s*(?:Mety\\s*\\(\\s*)?(Isa|Soratra|Marina)\\b`, "g");
-  const varMatch = varRe.exec(text);
-  if (varMatch) {
-    const pos = document.positionAt(varMatch.index);
-    return new vscode.Location(document.uri, pos);
+  // Cherche ensuite dans les fichiers importés
+  for (const filePath of getImportedPaths(document)) {
+    try {
+      const text = fs.readFileSync(filePath, "utf-8");
+      const imported = findDefinitionInFileText(filePath, text, word);
+      if (imported) return imported;
+    } catch (_) { /* fichier illisible */ }
   }
 
   return null;

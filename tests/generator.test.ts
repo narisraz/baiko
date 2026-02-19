@@ -138,6 +138,20 @@ describe("Generator — asa / mamoaka", () => {
   });
 });
 
+describe("Generator — package import", () => {
+  test('ampidiro "package:axios" → require', () => {
+    expect(compile('ampidiro "package:axios";')).toBe("const axios = require('axios');");
+  });
+
+  test('package scoped @org/pkg → varname = pkg', () => {
+    expect(compile('ampidiro "package:@angular/core";')).toBe("const core = require('@angular/core');");
+  });
+
+  test("appel de méthode → obj.method(args)", () => {
+    expect(compile('asehoy axios.get("url");')).toBe('console.log(axios.get("url"));');
+  });
+});
+
 describe("Generator — indentation", () => {
   test("blocs imbriqués", () => {
     const src = `

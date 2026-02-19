@@ -6,7 +6,7 @@ export function runBaiko(code: string): string {
   const lines: string[] = [];
   const interpreter = new Interpreter((value: string) => {
     lines.push(value);
-  }, noopResolver);
+  }, noopResolver, noopPackageResolver);
   const lexer = new Lexer(code);
   const tokens = lexer.tokenize();
   const parser = new Parser(tokens);
@@ -21,15 +21,17 @@ export interface BaikoCheckError {
   col: number | null;  // 1-based, null if unknown
 }
 
-// Dans le navigateur, les imports ne peuvent pas être résolus : on retourne un
-// fichier vide pour éviter que checkBaiko plante sur ampidiro.
+// Dans le navigateur, les fichiers ne peuvent pas être lus et les packages npm
+// ne sont pas disponibles : on utilise des résolveurs no-op.
 const noopResolver = (_path: string): string => "";
+const noopPackageResolver = (_: string): unknown =>
+  new Proxy({} as Record<string, unknown>, { get: () => (..._a: unknown[]) => null });
 
 export function checkBaiko(code: string): BaikoCheckError[] {
   try {
     const tokens = new Lexer(code).tokenize();
     const program = new Parser(tokens).parse();
-    new Interpreter(undefined, noopResolver).run(program);
+    new Interpreter(undefined, noopResolver, noopPackageResolver).run(program);
     return [];
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

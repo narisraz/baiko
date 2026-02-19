@@ -14,6 +14,7 @@ import {
   BinaryExpression,
   UnaryExpression,
   CallExpression,
+  MemberCallExpression,
   Identifier,
   NumericLiteral,
   StringLiteral,
@@ -28,9 +29,24 @@ import { Parser } from "../parser/parser";
 
 export type FileResolver = (path: string) => string;
 
+/** Dérive le nom de variable Baiko à partir du nom de package npm.
+ *  Ex: "axios" → "axios", "@org/pkg-name" → "pkg_name"
+ */
+function deriveVarName(pkgName: string): string {
+  const base = pkgName.includes("/") ? pkgName.split("/").pop()! : pkgName;
+  return base.replace(/[^a-zA-Z0-9_]/g, "_");
+}
+export type PackageResolver = (pkgName: string) => unknown;
+
+/** Objet JavaScript natif encapsulé (résultat d'un ampidiro "package:...") */
+export interface BaikoNative {
+  kind: "native";
+  value: unknown;
+}
+
 // ---- Valeurs runtime ----
 
-export type BaikoValue = number | string | boolean | null | BaikoCallable;
+export type BaikoValue = number | string | boolean | null | BaikoCallable | BaikoNative;
 
 export interface BaikoCallable {
   kind: "function";
@@ -85,12 +101,21 @@ export class Interpreter {
   private global = new Environment();
   private readonly printFn: (s: string) => void;
   private readonly resolver: FileResolver;
+  private readonly pkgResolver: PackageResolver;
   private readonly imported = new Set<string>();
 
-  constructor(printFn?: (s: string) => void, resolver?: FileResolver) {
+  constructor(
+    printFn?: (s: string) => void,
+    resolver?: FileResolver,
+    pkgResolver?: PackageResolver,
+  ) {
     this.printFn = printFn ?? ((s) => console.log(s));
     this.resolver = resolver ?? (() => {
       throw new RuntimeError("Tsy azo ampidirina ny rakitra ato amin'ity toerana ity");
+    });
+    this.pkgResolver = pkgResolver ?? ((pkgName: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      return require(pkgName) as unknown;
     });
   }
 
@@ -125,6 +150,22 @@ export class Interpreter {
   private execImport(node: ImportStatement, env: Environment): void {
     if (this.imported.has(node.path)) return; // déjà importé ou import circulaire
     this.imported.add(node.path);
+
+    // ---- Package Node.js : ampidiro "package:pkgname" ----
+    if (node.path.startsWith("package:")) {
+      const pkgName = node.path.slice("package:".length);
+      const varName = deriveVarName(pkgName);
+      let mod: unknown;
+      try {
+        mod = this.pkgResolver(pkgName);
+      } catch (e) {
+        throw new RuntimeError(`Tsy hita ny package "${pkgName}": ${(e as Error).message}`);
+      }
+      env.define(varName, { kind: "native", value: mod });
+      return;
+    }
+
+    // ---- Fichier Baiko ----
     let content: string;
     try {
       content = this.resolver(node.path);
@@ -214,6 +255,7 @@ export class Interpreter {
         return !this.isTruthy(operandVal);
       }
       case "CallExpression":       return this.execCall(expr as CallExpression, env);
+      case "MemberCallExpression": return this.execMemberCall(expr as MemberCallExpression, env);
     }
   }
 
@@ -295,6 +337,36 @@ export class Interpreter {
     return signal instanceof ReturnSignal ? signal.value : null;
   }
 
+  private execMemberCall(node: MemberCallExpression, env: Environment): BaikoValue {
+    const obj = env.get(node.object);
+    if (
+      obj === null ||
+      typeof obj !== "object" ||
+      (obj as BaikoNative).kind !== "native"
+    ) {
+      throw new RuntimeError(
+        `"${node.object}" dia tsy sehatra natif — ${this.typeOf(obj)} no noraisina`
+      );
+    }
+    const native = (obj as BaikoNative).value as Record<string, unknown>;
+    const fn = native[node.method];
+    if (typeof fn !== "function") {
+      throw new RuntimeError(`"${node.object}.${node.method}" tsy asa natif`);
+    }
+    const args = node.args.map((a) => this.execExpr(a, env));
+    const result = (fn as (...a: unknown[]) => unknown).call(native, ...args);
+    return this.tobaiko(result);
+  }
+
+  /** Convertit une valeur JS en BaikoValue. */
+  private tobaiko(value: unknown): BaikoValue {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") {
+      return value;
+    }
+    return { kind: "native", value };
+  }
+
   // ---- Utilitaires ----
 
   private noTsisy(value: BaikoValue, op: string): void {
@@ -342,6 +414,7 @@ export class Interpreter {
 
   private typeOf(value: BaikoValue): string {
     if (value === null) return "null";
+    if (typeof value === "object" && (value as BaikoNative).kind === "native") return "natif";
     if (typeof value === "object") return "function";
     return typeof value;
   }
@@ -357,6 +430,9 @@ export class Interpreter {
     if (value === null) return "tsisy";
     if (value === true)  return "marina";
     if (value === false) return "diso";
+    if (typeof value === "object" && (value as BaikoNative).kind === "native") {
+      return String((value as BaikoNative).value);
+    }
     if (typeof value === "object") return `<asa ${(value as BaikoCallable).name}>`;
     return String(value);
   }

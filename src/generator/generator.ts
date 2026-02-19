@@ -5,6 +5,7 @@ import {
   FunctionDeclaration,
   VariableDeclaration,
   ImportStatement,
+  MemberCallExpression,
   IfStatement,
   WhileStatement,
   ReturnStatement,
@@ -65,6 +66,14 @@ export class Generator {
   private genImport(node: ImportStatement): string {
     if (this.imported.has(node.path)) return `// (${node.path} déjà importé)`;
     this.imported.add(node.path);
+
+    // Package Node.js : émet un require()
+    if (node.path.startsWith("package:")) {
+      const pkgName = node.path.slice("package:".length);
+      const varName = deriveVarName(pkgName);
+      return `const ${varName} = require('${pkgName}');`;
+    }
+
     if (!this.resolver) {
       return `// ampidiro "${node.path}" (tsy voafaritra — resolver tsy nomena)`;
     }
@@ -166,6 +175,11 @@ export class Generator {
         const args = c.args.map((a) => this.genExpression(a)).join(", ");
         return `${c.callee}(${args})`;
       }
+      case "MemberCallExpression": {
+        const mc = expr as MemberCallExpression;
+        const args = mc.args.map((a) => this.genExpression(a)).join(", ");
+        return `${mc.object}.${mc.method}(${args})`;
+      }
       case "Identifier":
         return (expr as Identifier).name;
       case "NumericLiteral":
@@ -194,4 +208,9 @@ export class Generator {
   private pad(): string {
     return "  ".repeat(this.indent);
   }
+}
+
+function deriveVarName(pkgName: string): string {
+  const base = pkgName.includes("/") ? pkgName.split("/").pop()! : pkgName;
+  return base.replace(/[^a-zA-Z0-9_]/g, "_");
 }

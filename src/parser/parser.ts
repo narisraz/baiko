@@ -20,6 +20,7 @@ import {
   BooleanLiteral,
   TsisyLiteral,
   UnaryExpression,
+  MemberCallExpression,
   BaikoType,
   MetyType,
   VarType,
@@ -385,7 +386,15 @@ export class Parser {
 
     if (tok.type === TokenType.Identifier) {
       this.advance();
-      // Call expression: name(args)
+      // Member call: obj.method(args)
+      if (this.match(TokenType.Dot)) {
+        const method = this.expect(TokenType.Identifier).value;
+        this.expect(TokenType.LeftParen);
+        const args = this.parseArgs();
+        this.expect(TokenType.RightParen);
+        return { type: "MemberCallExpression", object: tok.value, method, args } as MemberCallExpression;
+      }
+      // Regular call expression: name(args)
       if (this.match(TokenType.LeftParen)) {
         const args = this.parseArgs();
         this.expect(TokenType.RightParen);

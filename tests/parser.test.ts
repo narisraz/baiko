@@ -268,6 +268,24 @@ describe("Parser — ampidiro", () => {
   });
 });
 
+describe("Parser — appel de méthode natif", () => {
+  test("asehoy pkg.method(arg)", () => {
+    const node = first('asehoy axios.get("url");') as any;
+    expect(node.type).toBe("PrintStatement");
+    const mc = node.value;
+    expect(mc.type).toBe("MemberCallExpression");
+    expect(mc.object).toBe("axios");
+    expect(mc.method).toBe("get");
+    expect(mc.args).toHaveLength(1);
+  });
+
+  test("x: Soratra = pkg.method()", () => {
+    const node = first('x: Soratra = fs.readFileSync("f");') as any;
+    expect(node.type).toBe("VariableDeclaration");
+    expect(node.value.type).toBe("MemberCallExpression");
+  });
+});
+
 describe("Parser — avoaka", () => {
   test("avoaka asa → exported: true", () => {
     const node = first("avoaka asa f(n: Isa): Isa dia mamoaka n; farany") as any;
