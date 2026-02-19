@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Baiko",
+  "scopeName": "source.baiko",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#booleans" },
+    { "include": "#types" },
+    { "include": "#function-definition" },
+    { "include": "#keyword-while" },
+    { "include": "#keywords-control" },
+    { "include": "#keywords-other" },
+    { "include": "#function-call" },
+    { "include": "#operators" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.line.number-sign.baiko",
+      "match": "#.*$"
+    },
+    "strings": {
+      "name": "string.quoted.double.baiko",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.baiko",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.baiko",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    },
+    "booleans": {
+      "name": "constant.language.baiko",
+      "match": "\\b(marina|diso)\\b"
+    },
+    "types": {
+      "name": "storage.type.baiko",
+      "match": "\\b(Isa|Soratra|Marina)\\b"
+    },
+    "function-definition": {
+      "comment": "asa nomAsa(...) — met en évidence le nom de la fonction",
+      "match": "\\b(asa)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.other.baiko" },
+        "2": { "name": "entity.name.function.baiko" }
+      }
+    },
+    "keyword-while": {
+      "comment": "avereno raha — mot-clé composé pour le while",
+      "match": "\\bavereno\\s+raha\\b",
+      "name": "keyword.control.baiko"
+    },
+    "keywords-control": {
+      "name": "keyword.control.baiko",
+      "match": "\\b(raha|ankoatra|dia|farany|avereno)\\b"
+    },
+    "keywords-other": {
+      "name": "keyword.other.baiko",
+      "match": "\\b(asehoy|mamoaka|ary|na|tsy)\\b"
+    },
+    "function-call": {
+      "comment": "nom suivi de ( — appel de fonction",
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+      "captures": {
+        "1": { "name": "entity.name.function.call.baiko" }
+      }
+    },
+    "operators": {
+      "name": "keyword.operator.baiko",
+      "match": "(==|!=|<=|>=|[+\\-*/<>=])"
+    },
+    "identifiers": {
+      "name": "variable.other.baiko",
+      "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+    }
+  }
+}

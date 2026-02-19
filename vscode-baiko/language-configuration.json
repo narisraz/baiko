@@ -1,0 +1,26 @@
+{
+  "comments": {
+    "lineComment": "#"
+  },
+  "brackets": [
+    ["(", ")"]
+  ],
+  "autoClosingPairs": [
+    { "open": "(", "close": ")" },
+    { "open": "\"", "close": "\"", "notIn": ["string", "comment"] }
+  ],
+  "surroundingPairs": [
+    ["(", ")"],
+    ["\"", "\""]
+  ],
+  "onEnterRules": [
+    {
+      "beforeText": "\\b(dia)\\s*$",
+      "action": { "indent": "indent" }
+    }
+  ],
+  "indentationRules": {
+    "increaseIndentPattern": "\\bdia\\s*$",
+    "decreaseIndentPattern": "^\\s*(farany|ankoatra)\\b"
+  }
+}

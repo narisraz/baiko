@@ -1,0 +1,73 @@
+{
+  "Fanambarana asa": {
+    "prefix": "asa",
+    "body": [
+      "asa ${1:anarana}(${2:a}: ${3|Isa,Soratra,Marina|}): ${4|Isa,Soratra,Marina|} dia",
+      "\t${0}",
+      "farany"
+    ],
+    "description": "Fanambarana asa vaovao"
+  },
+
+  "Raha (if)": {
+    "prefix": "raha",
+    "body": [
+      "raha ${1:fepetra} dia",
+      "\t${0}",
+      "farany"
+    ],
+    "description": "Fehezanteny raha (if)"
+  },
+
+  "Raha / ankoatra (if/else)": {
+    "prefix": "rahanka",
+    "body": [
+      "raha ${1:fepetra} dia",
+      "\t${2}",
+      "ankoatra dia",
+      "\t${0}",
+      "farany"
+    ],
+    "description": "Fehezanteny raha / ankoatra (if / else)"
+  },
+
+  "Avereno raha (while)": {
+    "prefix": "avereno",
+    "body": [
+      "avereno raha ${1:fepetra} dia",
+      "\t${0}",
+      "farany"
+    ],
+    "description": "Fitodiavana avereno raha (while)"
+  },
+
+  "Fanambarana variable Isa": {
+    "prefix": "varisa",
+    "body": "${1:anarana}: Isa = ${0:0};",
+    "description": "Variable karazana Isa (isa)"
+  },
+
+  "Fanambarana variable Soratra": {
+    "prefix": "varsoratra",
+    "body": "${1:anarana}: Soratra = \"${0}\";",
+    "description": "Variable karazana Soratra (soratra)"
+  },
+
+  "Fanambarana variable Marina": {
+    "prefix": "varmarina",
+    "body": "${1:anarana}: Marina = ${2|marina,diso|};",
+    "description": "Variable karazana Marina (boolean)"
+  },
+
+  "Asehoy (print)": {
+    "prefix": "asehoy",
+    "body": "asehoy ${0};",
+    "description": "Asehoy ny vokatra"
+  },
+
+  "Mamoaka (return)": {
+    "prefix": "mamoaka",
+    "body": "mamoaka ${0};",
+    "description": "Avereno ny soatoavina"
+  }
+}
