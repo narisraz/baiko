@@ -46,12 +46,14 @@ function scanDocument(document) {
     functions.set(m[1], { params: m[2].trim(), returnType: m[3] || null });
   }
 
-  // nom: Type = ...  ou  nom: Mety(Type) = ...
+  // nom: Type = ...  ou  nom: Mety(Type) = ...  ou  nom: Lisitra(Type) = ...
   const varRe = /\b([a-zA-Z_]\w*)\s*:\s*(?:Mety\s*\(\s*)?(Isa|Soratra|Marina)\b/g;
   while ((m = varRe.exec(text)) !== null) {
-    if (!KEYWORD_DOCS[m[1]]) {
-      variables.set(m[1], m[2]);
-    }
+    if (!KEYWORD_DOCS[m[1]]) variables.set(m[1], m[2]);
+  }
+  const lisitraRe = /\b([a-zA-Z_]\w*)\s*:\s*(Lisitra\s*\((?:[^()]*|\([^()]*\))*\))/g;
+  while ((m = lisitraRe.exec(text)) !== null) {
+    if (!KEYWORD_DOCS[m[1]]) variables.set(m[1], m[2].replace(/\s+/g, ""));
   }
 
   return { functions, variables };
@@ -378,7 +380,7 @@ function findDefinitionInFileText(filePath, text, word) {
     return new vscode.Location(uri, new vscode.Position(line, col));
   }
 
-  const varRe = new RegExp(`\\b(${escaped})\\s*:\\s*(?:Mety\\s*\\(\\s*)?(Isa|Soratra|Marina)\\b`, "g");
+  const varRe = new RegExp(`\\b(${escaped})\\s*:\\s*(?:(?:Mety|Lisitra)\\s*\\(|(?:Isa|Soratra|Marina)\\b)`, "g");
   const varMatch = varRe.exec(text);
   if (varMatch) {
     const before = text.slice(0, varMatch.index);
